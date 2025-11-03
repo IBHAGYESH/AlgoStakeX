@@ -1,0 +1,16 @@
+/* Additional App-specific styles */
+
+.no-nfts-container,
+.no-staking-container {
+  text-align: center;
+  padding: 3rem;
+  background-color: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.no-nfts-text,
+.no-staking-text {
+  color: #666;
+  font-size: 1.1rem;
+}

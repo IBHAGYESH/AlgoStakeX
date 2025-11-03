@@ -1,0 +1,46 @@
+<!-- AlgoStakeX FT Dispenser (Dummy DEX) -->
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AlgoStakeX FT Dispenser</title>
+    <link rel="stylesheet" href="styles.css" />
+    <!-- Load AlgoStakeX SDK build (ensure dist is built) -->
+    <script defer src="../../dist/algostakex.js"></script>
+    <script src="https://unpkg.com/algosdk@latest/dist/browser/algosdk.min.js"></script>
+  </head>
+  <body>
+    <div class="container">
+      <h1>Algo FT Dispenser</h1>
+      <p class="subtitle">
+        Mint and dispense test FTs to your connected wallet.
+      </p>
+
+      <div class="card">
+        <div class="row">
+          <button id="connectWalletBtn" class="btn primary">
+            Connect Wallet
+          </button>
+          <span id="connectedWallet" class="muted"></span>
+        </div>
+
+        <div class="row">
+          <input
+            type="number"
+            id="amount"
+            placeholder="Amount to dispense"
+            min="1"
+          />
+          <button id="getTokensBtn" class="btn">Dispense</button>
+        </div>
+
+        <div class="info">
+          <p id="status" class="muted">Status: Idle</p>
+          <p id="assetInfo" class="muted"></p>
+        </div>
+      </div>
+    </div>
+    <script src="script.js" type="module" defer></script>
+  </body>
+</html>
