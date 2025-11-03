@@ -1263,6 +1263,33 @@ class AlgoStakeX {
     return stakeKey;
   }
 
+  #buildStakeBoxName(poolId, userAddress) {
+    // name = "stake_" + (uint16be len + poolId bytes) + (uint16be 1 + '_' ) + address public key (32 bytes)
+    const prefix = new TextEncoder().encode("stake_");
+    const poolIdBytes = new TextEncoder().encode(poolId);
+    const sepByte = new TextEncoder().encode("_");
+    const userPk = algosdk.decodeAddress(userAddress).publicKey;
+
+    const name = new Uint8Array(
+      prefix.length + 2 + poolIdBytes.length + 2 + 1 + userPk.length
+    );
+    let o = 0;
+    name.set(prefix, o);
+    o += prefix.length;
+    // uint16be length for poolId
+    name[o++] = (poolIdBytes.length >> 8) & 0xff;
+    name[o++] = poolIdBytes.length & 0xff;
+    name.set(poolIdBytes, o);
+    o += poolIdBytes.length;
+    // uint16be length for '_'
+    name[o++] = 0x00;
+    name[o++] = 0x01;
+    name.set(sepByte, o);
+    o += 1;
+    name.set(userPk, o);
+    return name;
+  }
+
   #decodeStakeData(boxValueBytes) {
     // Decode ARC-4 encoded StakeData struct from box value
     // The box contains ARC-4 encoded data
@@ -1582,6 +1609,22 @@ class AlgoStakeX {
           suggestedParams,
         });
 
+      // Build box reference for stake data
+      const boxName = this.#buildStakeBoxName(poolId, this.account);
+      const stakeBoxRef = {
+        appIndex: this.#contractApplicationId,
+        name: boxName,
+      };
+
+      const boxMBRPayment = algosdk.makePaymentTxnWithSuggestedParamsFromObject(
+        {
+          sender: this.account,
+          receiver: this.#contractWalletAddress,
+          amount: 100000, // 0.1 ALGO - covers box MBR + buffer
+          suggestedParams,
+        }
+      );
+
       // Create app call transaction
       const stakeAppCallTxn = algosdk.makeApplicationCallTxnFromObject({
         sender: this.account,
@@ -1598,16 +1641,17 @@ class AlgoStakeX {
           algosdk.ABIType.from("uint64").encode(BigInt(finalRewardRate)),
           algosdk.ABIType.from("string").encode(finalUtility),
         ],
+        boxes: [stakeBoxRef],
         foreignAssets: [Number(this.#tokenId)],
         suggestedParams: {
           ...suggestedParams,
           flatFee: true,
-          fee: 2000, // 0.002 Algo
+          fee: 1000000, // 0.002 Algo
         },
       });
 
       // Create transaction group
-      const stakeGroup = [stakeAppCallTxn, assetTransferTxn];
+      const stakeGroup = [boxMBRPayment, stakeAppCallTxn, assetTransferTxn];
       algosdk.assignGroupID(stakeGroup);
 
       // Sign transactions
