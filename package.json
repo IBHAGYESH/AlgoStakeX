@@ -1,0 +1,33 @@
+{
+  "name": "algostakex",
+  "version": "1.0.0",
+  "main": "algostakex.js",
+  "scripts": {
+    "watch": "webpack --watch",
+    "build": "webpack"
+  },
+  "keywords": [],
+  "author": "Bhagyesh Jahangirpuria",
+  "license": "ISC",
+  "description": "SDK for rapidly developing Algorand powered Staking Platform",
+  "devDependencies": {
+    "@babel/core": "^7.28.5",
+    "@babel/preset-env": "^7.28.5",
+    "@babel/preset-typescript": "^7.28.5",
+    "@types/node": "^24.10.0",
+    "babel-loader": "^10.0.0",
+    "css-loader": "^7.1.2",
+    "style-loader": "^4.0.0",
+    "ts-loader": "^9.5.4",
+    "typescript": "^5.9.3",
+    "webpack": "^5.102.1",
+    "webpack-cli": "^6.0.1"
+  },
+  "dependencies": {
+    "@algorandfoundation/algokit-utils": "^9.1.2",
+    "@algorandfoundation/algorand-typescript": "^1.0.1",
+    "@blockshake/defly-connect": "^1.2.1",
+    "@perawallet/connect": "^1.4.2",
+    "algosdk": "^3.5.2"
+  }
+}
