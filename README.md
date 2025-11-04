@@ -38,6 +38,7 @@ AlgoStakeX is an **open-source, plug-and-play staking infrastructure SDK** for t
 - 📦 **Optimized box storage** (95% cost reduction vs traditional)
 - ⚡ **Atomic transaction groups** (no clawback required)
 - 🌐 **Framework agnostic** (React, Node.js, React Native)
+- 🤖 **Headless mode support** (programmatic wallet connection for backends)
 - ✅ Works on **Testnet** and **Mainnet**
 - 🆓 **No backend required**—all logic runs client-side
 - 👐 **Open source & actively maintained**
@@ -55,41 +56,56 @@ npm install algostakex
 ### 2. Initialize the SDK
 
 ```javascript
-import AlgoStakeX from "algostakex";
-
-// Initialize
-const sdk = new AlgoStakeX({
-  network: "testnet", // 'testnet' or 'mainnet'
-  contractAppId: 123456789, // Your deployed contract app ID
-  tokenId: 987654321, // ASA token ID for staking
+// Initialize with basic configuration
+const sdk = new window.AlgoStakeX({
+  env: "testnet", // testnet | mainnet
+  namespace: "STAKX", // unique namespace for your project
+  token_id: 749059499, // ASA token ID for staking
+  enable_ui: true, // Enable built-in UI
+  disableToast: false, // Show toast notifications
+  toastLocation: "TOP_RIGHT", // TOP_LEFT | TOP_RIGHT
+  minimizeUILocation: "right", // left | right
+  logo: "./logo.png", // Your website logo (URL or path)
+  staking: {
+    type: "FLEXIBLE", // FLEXIBLE | FIXED
+    stake_period: 1440, // Optional for FLEXIBLE (in minutes)
+    withdraw_penalty: 5, // Optional for FLEXIBLE (percentage)
+    reward: {
+      type: "UTILITY", // APY | UTILITY
+      value: "Premium Access", // For single tier
+    },
+  },
 });
-
-// Connect wallet
-await sdk.connectWallet("pera"); // 'pera', 'defly', or 'custodial'
 ```
 
-### 3. Start Staking
+### 3. Unlock the SDK (Required)
+
+**Important:** Before users can stake or withdraw, you must unlock the SDK by adding a treasury wallet. This wallet is used to fund reward distributions and prevent transaction failures during withdrawals.
 
 ```javascript
-// Stake tokens
-await sdk.stake({
-  poolId: "GAME_POOL_1",
-  amount: 1000, // Amount of tokens to stake
-  lockPeriod: 2592000, // 30 days in seconds
-  rewardType: "APY",
-  rewardRate: 1000, // 10% APY (in basis points: 1000 = 10%)
-});
-
-// Check if user has valid stake (for access control)
-const canPlay = await sdk.hasValidStake({
-  poolId: "GAME_POOL_1",
-  userAddress: userWallet,
-  minimumAmount: 100,
-});
-
-// Withdraw staked tokens
-await sdk.withdraw({ poolId: "GAME_POOL_1" });
+// Add treasury wallet to unlock SDK
+sdk.addTreasuryWallet(
+  "TREASURY_WALLET_ADDRESS", // Your treasury wallet address (58 characters)
+  "your 25 word treasury mnemonic phrase here..." // Treasury wallet mnemonic
+);
 ```
+
+**Why is this required?**
+- The treasury wallet funds reward token distributions
+- Prevents withdrawal failures when users claim rewards
+- Ensures smooth operation of the staking system
+- Only needs to be set once per SDK instance
+
+### 4. Use the SDK
+
+Once unlocked, the SDK provides a built-in UI for staking operations. Users can:
+- Connect their wallet (Pera, Defly)
+- Stake tokens
+- View their stakes
+- Withdraw tokens with rewards
+- Check rewards
+
+All operations are handled through the UI automatically!
 
 **That's it!** You now have a fully functional staking system. 🎉
 
@@ -100,16 +116,21 @@ await sdk.withdraw({ poolId: "GAME_POOL_1" });
 ### Gaming 🎮
 
 ```javascript
-// Require token staking to play game
-const canPlay = await sdk.hasValidStake({
-  poolId: "GAME_ACCESS",
-  userAddress: player.address,
-  minimumAmount: 100, // Minimum 100 tokens staked
+// Initialize SDK for gaming
+const gameSDK = new window.AlgoStakeX({
+  env: "testnet",
+  namespace: "GAME1",
+  token_id: 749059499,
+  enable_ui: true,
+  staking: {
+    type: "FLEXIBLE",
+    stake_period: 10080, // 7 days
+    reward: {
+      type: "UTILITY",
+      value: "Game Access",
+    },
+  },
 });
-
-if (canPlay) {
-  startGame();
-}
 ```
 
 **Examples:**
@@ -122,13 +143,20 @@ if (canPlay) {
 ### DeFi 💰
 
 ```javascript
-// Yield farming with flexible staking
-await sdk.stake({
-  poolId: "YIELD_FARM_1",
-  amount: 10000,
-  lockPeriod: 0, // Flexible (withdraw anytime)
-  rewardType: "APY",
-  rewardRate: 1200, // 12% APY
+// Initialize SDK for yield farming
+const defiSDK = new window.AlgoStakeX({
+  env: "testnet",
+  namespace: "DEFI1",
+  token_id: 749059499,
+  enable_ui: true,
+  staking: {
+    type: "FIXED",
+    stake_period: 129600, // 90 days
+    reward: {
+      type: "APY",
+      value: 15, // 15% APY
+    },
+  },
 });
 ```
 
@@ -142,16 +170,24 @@ await sdk.stake({
 ### Membership & Access Control 🎫
 
 ```javascript
-// Premium feature access
-const isPremium = await sdk.hasValidStake({
-  poolId: "PREMIUM_TIER",
-  userAddress: user.address,
-  minimumAmount: 500,
+// Initialize SDK with membership tiers
+const memberSDK = new window.AlgoStakeX({
+  env: "testnet",
+  namespace: "MEMBR",
+  token_id: 749059499,
+  enable_ui: true,
+  staking: {
+    type: "FLEXIBLE",
+    reward: {
+      type: "UTILITY",
+      value: [
+        { name: "Basic", stake_amount: 100, value: "Basic Access" },
+        { name: "Premium", stake_amount: 500, value: "Premium Features" },
+        { name: "VIP", stake_amount: 2000, value: "All Features" },
+      ],
+    },
+  },
 });
-
-if (isPremium) {
-  unlockPremiumFeatures();
-}
 ```
 
 **Examples:**
@@ -164,13 +200,20 @@ if (isPremium) {
 ### Governance 🗳️
 
 ```javascript
-// DAO voting power based on staked tokens
-const stakeInfo = await sdk.getStakeInfo({
-  poolId: "DAO_GOVERNANCE",
-  userAddress: voter.address,
+// Initialize SDK for DAO governance
+const daoSDK = new window.AlgoStakeX({
+  env: "testnet",
+  namespace: "DAO01",
+  token_id: 749059499,
+  enable_ui: true,
+  staking: {
+    type: "FLEXIBLE",
+    reward: {
+      type: "UTILITY",
+      value: "Voting Rights",
+    },
+  },
 });
-
-const votingPower = stakeInfo.stakedAmount; // 1 token = 1 vote
 ```
 
 **Examples:**
@@ -182,16 +225,20 @@ const votingPower = stakeInfo.stakedAmount; // 1 token = 1 vote
 ### NFT Utilities 🖼️
 
 ```javascript
-// NFT holder bonuses
-const hasStake = await sdk.hasValidStake({
-  poolId: "NFT_HOLDER_BONUS",
-  userAddress: holder.address,
-  minimumAmount: 1000,
+// Initialize SDK for NFT holder benefits
+const nftSDK = new window.AlgoStakeX({
+  env: "testnet",
+  namespace: "NFT01",
+  token_id: 749059499,
+  enable_ui: true,
+  staking: {
+    type: "FLEXIBLE",
+    reward: {
+      type: "UTILITY",
+      value: "Exclusive NFT Drops + Holder Benefits",
+    },
+  },
 });
-
-if (hasStake && holdsNFT) {
-  grantExclusiveAccess();
-}
 ```
 
 **Examples:**
@@ -206,154 +253,219 @@ if (hasStake && holdsNFT) {
 
 ### Initialization Options
 
-```typescript
-const sdk = new AlgoStakeX({
-  network: "testnet" | "mainnet", // Required
-  contractAppId: number, // Required: Your deployed contract app ID
-  tokenId: number, // Required: ASA token ID for staking
-  walletType: "pera" | "defly" | "custodial", // Optional
-  mnemonic: string, // Required only for custodial wallet
+#### Basic Configuration
+
+```javascript
+const sdk = new window.AlgoStakeX({
+  env: "testnet" | "mainnet", // Required: Network environment
+  namespace: string, // Required: Unique 5-character identifier
+  token_id: number, // Required: ASA token ID for staking
+  enable_ui: boolean, // Optional: Enable built-in UI (default: true)
+  disableToast: boolean, // Optional: Disable toast notifications
+  toastLocation: "TOP_LEFT" | "TOP_RIGHT", // Optional: Toast position
+  minimizeUILocation: "left" | "right", // Optional: Minimize button position
+  logo: string, // Optional: Your logo URL or path
+  staking: {
+    type: "FLEXIBLE" | "FIXED", // Required: Staking type
+    stake_period: number, // Optional: For FLEXIBLE (in minutes)
+    withdraw_penalty: number, // Optional: For FLEXIBLE (percentage 0-100)
+    reward: {
+      type: "APY" | "UTILITY", // Required: Reward type
+      value: string | number | Array, // Required: Reward value (see examples below)
+    },
+  },
 });
 ```
 
-### Core Methods
+#### Reward Configuration Examples
 
-#### 🔐 Wallet Operations
+**Single Tier Rewards:**
 
-```typescript
-// Connect wallet
-await sdk.connectWallet(walletType: 'pera' | 'defly' | 'custodial');
+```javascript
+// APY-based rewards
+reward: {
+  type: "APY",
+  value: 10, // 10% APY
+}
 
-// Disconnect wallet
+// Utility-based rewards
+reward: {
+  type: "UTILITY",
+  value: "Premium Access, Ad-free, Feature 1",
+}
+```
+
+**Multi-Tier Rewards:**
+
+```javascript
+reward: {
+  type: "UTILITY", // or "APY"
+  value: [
+    {
+      name: "Bronze", // Tier name
+      stake_amount: 100, // Minimum stake required
+      value: "5 / Feature 1, Feature 2", // APY or utility features
+    },
+    {
+      name: "Silver",
+      stake_amount: 1000,
+      value: "10 / Feature 1, Feature 2, Feature 3",
+    },
+    {
+      name: "Gold",
+      stake_amount: 10000,
+      value: "20 / Feature 1, Feature 2, Feature 3, Feature 4, Feature 5",
+    },
+  ],
+}
+```
+
+### Built-in UI Features
+
+The SDK provides a complete UI that handles all staking operations automatically:
+
+- **Wallet Connection**: Connect Pera Wallet or Defly Wallet with one click
+- **Stake Tokens**: User-friendly interface to stake tokens with amount input
+- **View Stakes**: Display current stake amount, rewards, and lock period
+- **Withdraw**: Easy withdrawal with automatic penalty calculation (if applicable)
+- **Tier Display**: Shows available tiers and current user tier (for multi-tier rewards)
+- **Real-time Updates**: Live updates of stake status and rewards
+- **Responsive Design**: Works on desktop and mobile devices
+- **Toast Notifications**: User feedback for all operations
+- **Minimize/Maximize**: Collapsible UI to save screen space
+
+### Headless Mode (Programmatic Access)
+
+For backend applications or custom integrations, the SDK supports **headless mode** where you can disable the UI and connect wallets programmatically:
+
+```javascript
+// Initialize SDK in headless mode
+const sdk = new window.AlgoStakeX({
+  env: "testnet",
+  namespace: "STAKX",
+  token_id: 749059499,
+  enable_ui: false, // Disable built-in UI
+  staking: {
+    type: "FLEXIBLE",
+    reward: {
+      type: "APY",
+      value: 10,
+    },
+  },
+});
+
+// STEP 1: Unlock SDK with treasury wallet (Required)
+sdk.addTreasuryWallet(
+  "TREASURY_WALLET_ADDRESS",
+  "your 25 word treasury mnemonic phrase here..."
+);
+
+// STEP 2: Connect user wallet programmatically
+await sdk.connectWallet(
+  "USER_WALLET_ADDRESS", // 58-character Algorand address
+  "user 25 word mnemonic phrase here..." // 25-word mnemonic
+);
+
+// STEP 3: Now you can use the SDK programmatically
+// All staking operations are available via SDK methods
+
+// STEP 4: Disconnect wallet when done
 await sdk.disconnectWallet();
-
-// Get connected address
-const address = sdk.getConnectedAddress();
 ```
 
-#### 💰 Staking Operations
+**Use Cases for Headless Mode:**
+- Backend services that manage staking on behalf of users
+- Automated staking bots
+- Server-side reward distribution systems
+- Custom UI implementations
+- Integration with existing wallet management systems
 
-```typescript
-// Stake tokens
-await sdk.stake({
-  poolId: string, // Unique pool identifier
-  amount: number, // Amount of tokens to stake
-  lockPeriod: number, // Lock period in seconds (0 for flexible)
-  rewardType: "APY" | "UTILITY" | "CUSTOM",
-  rewardRate: number, // Basis points (1000 = 10%)
-  utility: string, // Optional: Utility description for utility-based rewards
-});
-
-// Withdraw staked tokens
-await sdk.withdraw({
-  poolId: string,
-});
-
-// Emergency withdraw with penalty
-await sdk.emergencyWithdraw({
-  poolId: string,
-  penaltyPercentage: number, // 0-100 (e.g., 10 = 10% penalty)
-});
-```
-
-#### 📊 Query Methods
-
-```typescript
-// Check if user has valid stake (for access control)
-const hasStake = await sdk.hasValidStake({
-  poolId: string,
-  userAddress: string,
-  minimumAmount: number,
-});
-// Returns: boolean
-
-// Get detailed stake information
-const stakeInfo = await sdk.getStakeInfo({
-  poolId: string,
-  userAddress: string,
-});
-
-// Calculate pending rewards
-const pendingRewards = await sdk.calculatePendingRewards({
-  poolId: string,
-  userAddress: string,
-});
-```
-
-#### 🛠️ Administrative Methods
-
-```typescript
-// Donate tokens to contract for rewards
-await sdk.donateTokens({
-  tokenId: number,
-  amount: number,
-});
-
-// Withdraw excess tokens from contract
-await sdk.withdrawExcessTokens({
-  tokenId: number,
-  amount: number,
-  recipient: string,
-});
-
-// Update existing stake parameters
-await sdk.updateStake({
-  poolId: string,
-  newRewardRate: number,
-  newLockPeriod: number,
-  newIsFlexible: boolean,
-});
-
-// Transfer admin rights
-await sdk.transferAdmin({
-  newAdminAddress: string,
-});
-```
+**Important Notes:**
+- Treasury wallet must be added before any staking operations
+- Treasury wallet should have sufficient ALGO for transaction fees
+- Treasury wallet should hold reward tokens for distribution
+- Keep treasury wallet mnemonic secure (server-side only)
 
 ---
 
 ## 🎯 Staking Models
 
-### Flexible Staking
+### Flexible Staking with APY Rewards
 
-Users can withdraw anytime without penalties.
+Users can withdraw anytime with optional penalty.
 
 ```javascript
-await sdk.stake({
-  poolId: "FLEXIBLE_POOL",
-  amount: 1000,
-  lockPeriod: 0, // 0 = flexible
-  rewardType: "APY",
-  rewardRate: 500, // 5% APY
+const sdk = new window.AlgoStakeX({
+  env: "testnet",
+  namespace: "STAKX",
+  token_id: 749059499,
+  enable_ui: true,
+  staking: {
+    type: "FLEXIBLE",
+    stake_period: 1440, // 1 day in minutes
+    withdraw_penalty: 5, // 5% penalty for early withdrawal
+    reward: {
+      type: "APY",
+      value: 10, // 10% APY
+    },
+  },
 });
 ```
 
-### Fixed-Term Staking
+### Fixed-Term Staking with Higher APY
 
 Users must wait for the lock period to expire.
 
 ```javascript
-await sdk.stake({
-  poolId: "FIXED_POOL",
-  amount: 5000,
-  lockPeriod: 7776000, // 90 days in seconds
-  rewardType: "APY",
-  rewardRate: 1500, // 15% APY (higher reward for longer lock)
+const sdk = new window.AlgoStakeX({
+  env: "testnet",
+  namespace: "STAKX",
+  token_id: 749059499,
+  enable_ui: true,
+  staking: {
+    type: "FIXED",
+    stake_period: 129600, // 90 days in minutes
+    reward: {
+      type: "APY",
+      value: 20, // 20% APY (higher reward for longer lock)
+    },
+  },
 });
 ```
 
-### Utility-Based Staking
+### Utility-Based Staking with Tiers
 
-Stake to unlock features instead of earning tokens.
+Stake to unlock features based on stake amount.
 
 ```javascript
-await sdk.stake({
-  poolId: "UTILITY_POOL",
-  amount: 100,
-  lockPeriod: 2592000, // 30 days
-  rewardType: "UTILITY",
-  rewardRate: 0,
-  utility: "Premium membership access",
+const sdk = new window.AlgoStakeX({
+  env: "testnet",
+  namespace: "STAKX",
+  token_id: 749059499,
+  enable_ui: true,
+  staking: {
+    type: "FLEXIBLE",
+    reward: {
+      type: "UTILITY",
+      value: [
+        {
+          name: "Bronze",
+          stake_amount: 100,
+          value: "Basic Features",
+        },
+        {
+          name: "Silver",
+          stake_amount: 1000,
+          value: "Premium Features + Ad-free",
+        },
+        {
+          name: "Gold",
+          stake_amount: 10000,
+          value: "All Features + Priority Support",
+        },
+      ],
+    },
+  },
 });
 ```
 
@@ -361,117 +473,151 @@ await sdk.stake({
 
 ## 🔄 Reward Types
 
-| Reward Type | Description                                   | Example Use Case                        |
-| ----------- | --------------------------------------------- | --------------------------------------- |
-| **APY**     | Percentage-based returns calculated over time | DeFi yield farming, savings accounts    |
-| **UTILITY** | Access to features/services                   | Gaming access, premium memberships      |
-| **CUSTOM**  | Different token as reward                     | Liquidity mining with governance tokens |
+| Reward Type | Description                                   | Example Use Case                     | Value Format                          |
+| ----------- | --------------------------------------------- | ------------------------------------ | ------------------------------------- |
+| **APY**     | Percentage-based returns calculated over time | DeFi yield farming, savings accounts | Number (e.g., `10` for 10% APY)      |
+| **UTILITY** | Access to features/services                   | Gaming access, premium memberships   | String or Array of tier objects      |
 
 ---
 
 ## 💡 Code Examples
 
-### Example 1: Gaming Platform
+### Example 1: Gaming Platform with Stake-to-Play
 
 ```javascript
-import AlgoStakeX from "algostakex";
-
-const stakingSDK = new AlgoStakeX({
-  network: "mainnet",
-  contractAppId: 123456789,
-  tokenId: 987654321,
+// Initialize SDK for gaming platform
+const stakingSDK = new window.AlgoStakeX({
+  env: "mainnet",
+  namespace: "GAME1",
+  token_id: 987654321,
+  enable_ui: true,
+  logo: "./game-logo.png",
+  staking: {
+    type: "FLEXIBLE",
+    stake_period: 10080, // 7 days in minutes
+    withdraw_penalty: 10, // 10% penalty
+    reward: {
+      type: "UTILITY",
+      value: "Game Access + Daily Rewards",
+    },
+  },
 });
 
-// Connect player's wallet
-await stakingSDK.connectWallet("pera");
-
-// Check if player can access the game
-async function canPlayerPlay(playerAddress) {
-  return await stakingSDK.hasValidStake({
-    poolId: "GAME_ACCESS",
-    userAddress: playerAddress,
-    minimumAmount: 50, // Minimum 50 tokens required
-  });
-}
-
-// Start game if player has valid stake
-if (await canPlayerPlay(playerAddress)) {
-  console.log("Welcome to the game! 🎮");
-  startGame();
-} else {
-  console.log("Please stake at least 50 tokens to play.");
-  showStakingUI();
-}
+// The SDK UI will automatically handle:
+// - Wallet connection
+// - Staking tokens
+// - Checking stake status
+// - Withdrawals
 ```
 
-### Example 2: DeFi Yield Farming
+### Example 2: DeFi Yield Farming with High APY
 
 ```javascript
-// High APY for long-term stakers
-await stakingSDK.stake({
-  poolId: "YIELD_FARM_90D",
-  amount: 10000,
-  lockPeriod: 7776000, // 90 days
-  rewardType: "APY",
-  rewardRate: 2000, // 20% APY
+// Initialize SDK for DeFi platform
+const defiSDK = new window.AlgoStakeX({
+  env: "mainnet",
+  namespace: "DEFI1",
+  token_id: 123456789,
+  enable_ui: true,
+  logo: "./defi-logo.png",
+  staking: {
+    type: "FIXED",
+    stake_period: 129600, // 90 days in minutes
+    reward: {
+      type: "APY",
+      value: 25, // 25% APY for 90-day lock
+    },
+  },
 });
 
-// Check pending rewards
-const rewards = await stakingSDK.calculatePendingRewards({
-  poolId: "YIELD_FARM_90D",
-  userAddress: userAddress,
-});
-
-console.log(`You've earned ${rewards} tokens!`);
+// Built-in UI shows:
+// - Current APY
+// - Estimated rewards
+// - Lock period countdown
+// - Automatic reward calculations
 ```
 
-### Example 3: Membership Platform
+### Example 3: Membership Platform with Tiered Access
 
 ```javascript
-// Stake for premium membership
-await stakingSDK.stake({
-  poolId: "PREMIUM_MEMBERSHIP",
-  amount: 500,
-  lockPeriod: 2592000, // 30 days
-  rewardType: "UTILITY",
-  rewardRate: 0,
-  utility: "Premium features + ad-free experience",
+// Initialize SDK with membership tiers
+const membershipSDK = new window.AlgoStakeX({
+  env: "mainnet",
+  namespace: "MEMBR",
+  token_id: 456789123,
+  enable_ui: true,
+  logo: "./membership-logo.png",
+  staking: {
+    type: "FLEXIBLE",
+    reward: {
+      type: "UTILITY",
+      value: [
+        {
+          name: "Basic",
+          stake_amount: 100,
+          value: "Ad-free Experience",
+        },
+        {
+          name: "Premium",
+          stake_amount: 500,
+          value: "Ad-free + Premium Content",
+        },
+        {
+          name: "VIP",
+          stake_amount: 2000,
+          value: "All Features + Priority Support + Exclusive Events",
+        },
+      ],
+    },
+  },
 });
 
-// Check membership status
-const isPremium = await stakingSDK.hasValidStake({
-  poolId: "PREMIUM_MEMBERSHIP",
-  userAddress: userAddress,
-  minimumAmount: 500,
-});
-
-if (isPremium) {
-  enablePremiumFeatures();
-  removeAds();
-}
+// SDK UI automatically shows:
+// - Available membership tiers
+// - Current user tier
+// - Benefits for each tier
+// - Upgrade options
 ```
 
-### Example 4: DAO Governance
+### Example 4: DAO Governance with Voting Power
 
 ```javascript
-// Stake for voting power
-await stakingSDK.stake({
-  poolId: "DAO_GOVERNANCE",
-  amount: 1000,
-  lockPeriod: 0, // Flexible
-  rewardType: "UTILITY",
-  rewardRate: 0,
-  utility: "Voting rights in DAO proposals",
+// Initialize SDK for DAO governance
+const daoSDK = new window.AlgoStakeX({
+  env: "mainnet",
+  namespace: "DAO01",
+  token_id: 789123456,
+  enable_ui: true,
+  logo: "./dao-logo.png",
+  staking: {
+    type: "FLEXIBLE",
+    reward: {
+      type: "UTILITY",
+      value: [
+        {
+          name: "Member",
+          stake_amount: 100,
+          value: "1x Voting Power",
+        },
+        {
+          name: "Council",
+          stake_amount: 1000,
+          value: "5x Voting Power + Proposal Rights",
+        },
+        {
+          name: "Core",
+          stake_amount: 10000,
+          value: "10x Voting Power + Veto Rights + Treasury Access",
+        },
+      ],
+    },
+  },
 });
 
-// Get voting power
-const stakeInfo = await stakingSDK.getStakeInfo({
-  poolId: "DAO_GOVERNANCE",
-  userAddress: voterAddress,
-});
-
-const votingPower = stakeInfo.stakedAmount;
-console.log(`Your voting power: ${votingPower} votes`);
+// SDK tracks:
+// - Staked amount = Voting power
+// - Governance tier
+// - Proposal submission rights
 ```
 
 ---
@@ -504,44 +650,89 @@ console.log(`Your voting power: ${votingPower} votes`);
 
 ## 🔧 Advanced Configuration
 
-### Custom Wallet Integration
+### UI Customization
 
 ```javascript
-// Use custodial wallet (for backend integration)
-const sdk = new AlgoStakeX({
-  network: "mainnet",
-  contractAppId: 123456789,
-  tokenId: 987654321,
-  walletType: "custodial",
-  mnemonic: "your 25-word mnemonic phrase here...",
+// Customize SDK appearance and behavior
+const sdk = new window.AlgoStakeX({
+  env: "mainnet",
+  namespace: "MYAPP",
+  token_id: 123456789,
+  enable_ui: true,
+  disableToast: false, // Show notifications
+  toastLocation: "TOP_RIGHT", // Toast position
+  minimizeUILocation: "right", // Minimize button position
+  logo: "https://myapp.com/logo.png", // Your logo
+  staking: {
+    type: "FLEXIBLE",
+    stake_period: 43200, // 30 days in minutes
+    withdraw_penalty: 10, // 10% penalty
+    reward: {
+      type: "APY",
+      value: 12,
+    },
+  },
 });
 ```
 
-### Multiple Pool Management
+### Multiple Staking Instances
 
 ```javascript
-// Create different pools for different use cases
-const pools = {
-  gaming: 'GAME_ACCESS_POOL',
-  premium: 'PREMIUM_MEMBERSHIP',
-  governance: 'DAO_VOTING_POOL',
-  yield: 'YIELD_FARM_90D'
-};
+// Create different SDK instances for different purposes
+const gamingSDK = new window.AlgoStakeX({
+  env: "mainnet",
+  namespace: "GAME1",
+  token_id: 123456789,
+  staking: {
+    type: "FLEXIBLE",
+    reward: { type: "UTILITY", value: "Game Access" },
+  },
+});
 
-// Stake in multiple pools
-await sdk.stake({ poolId: pools.gaming, amount: 100, ... });
-await sdk.stake({ poolId: pools.premium, amount: 500, ... });
+const defiSDK = new window.AlgoStakeX({
+  env: "mainnet",
+  namespace: "DEFI1",
+  token_id: 987654321,
+  staking: {
+    type: "FIXED",
+    stake_period: 129600, // 90 days
+    reward: { type: "APY", value: 20 },
+  },
+});
 ```
 
-### Dynamic Reward Updates
+### Combining APY with Utility Tiers
 
 ```javascript
-// Update reward rate for existing stakes
-await sdk.updateStake({
-  poolId: "YIELD_FARM_90D",
-  newRewardRate: 2500, // Increase to 25% APY
-  newLockPeriod: 7776000, // Keep 90 days
-  newIsFlexible: false,
+// Offer both APY rewards and utility benefits
+const hybridSDK = new window.AlgoStakeX({
+  env: "mainnet",
+  namespace: "HYBRD",
+  token_id: 456789123,
+  enable_ui: true,
+  staking: {
+    type: "FLEXIBLE",
+    reward: {
+      type: "UTILITY",
+      value: [
+        {
+          name: "Starter",
+          stake_amount: 100,
+          value: "5% APY / Basic Features",
+        },
+        {
+          name: "Pro",
+          stake_amount: 1000,
+          value: "10% APY / Premium Features + Priority Support",
+        },
+        {
+          name: "Enterprise",
+          stake_amount: 10000,
+          value: "15% APY / All Features + Dedicated Account Manager",
+        },
+      ],
+    },
+  },
 });
 ```
 
