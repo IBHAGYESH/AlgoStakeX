@@ -2,7 +2,15 @@ import algosdk from "algosdk";
 import { PeraWalletConnect } from "@perawallet/connect";
 import { DeflyWalletConnect } from "@blockshake/defly-connect";
 import eventBus from "./event-bus.js";
-import "./algostakex.css";
+import { Validator } from "./validation.js";
+import { UIManager } from "./ui.js";
+import {
+  algosToMicroAlgos,
+  microAlgosToAlgos,
+  getStakeKey,
+  buildStakeBoxName,
+  decodeStakeData,
+} from "./utils.js";
 
 const appSpecJson = require("../AlgoKit/smart_contracts/artifacts/AlgoStakeX/AlgoStakeX.arc32.json");
 const encoder = new algosdk.ABIContract({
@@ -39,6 +47,7 @@ class AlgoStakeX {
   #tokenId;
   #stakingConfig;
   #mnemonicAccount; // For programmatic wallet connection
+  #uiManager; // UI Manager instance
 
   constructor({
     token_id,
@@ -54,16 +63,16 @@ class AlgoStakeX {
   }) {
     try {
       // Validate all parameters
-      this.#network = this.#validateEnvironment(env);
-      this.#namespace = this.#validateNamespace(namespace);
-      this.#tokenId = this.#validateTokenId(token_id);
-      this.#disableToast = this.#validateDisableToast(disableToast);
-      this.#disableUi = this.#validateDisableUi(!enable_ui);
+      this.#network = Validator.validateEnvironment(env);
+      this.#namespace = Validator.validateNamespace(namespace);
+      this.#tokenId = Validator.validateTokenId(token_id);
+      this.#disableToast = Validator.validateDisableToast(disableToast);
+      this.#disableUi = Validator.validateDisableUi(!enable_ui);
       this.#minimizeUILocation =
-        this.#validateMinimizeUILocation(minimizeUILocation);
-      this.#logo = this.#validateLogo(logo);
-      this.#toastLocation = this.#validateToastLocation(toastLocation);
-      this.#stakingConfig = this.#validateStakingConfig(staking);
+        Validator.validateMinimizeUILocation(minimizeUILocation);
+      this.#logo = Validator.validateLogo(logo);
+      this.#toastLocation = Validator.validateToastLocation(toastLocation);
+      this.#stakingConfig = Validator.validateStakingConfig(staking);
 
       // Initialize other properties
       this.#treasuryWallet = null;
@@ -89,13 +98,12 @@ class AlgoStakeX {
         443
       );
 
-      // Initialize contract details - TODO: Update with actual contract IDs
       this.#contractApplicationId =
-        this.#network === "mainnet" ? 749041504 : 749041504; // Update with real IDs
+        this.#network === "mainnet" ? 749041504 : 749041504;
       this.#contractWalletAddress =
         this.#network === "mainnet"
           ? "PMQMLZXHMQK2AA3XQ7KVVDWAXKGJMFSIGJOC4TSPANGUKQWZZT6R7SB5XE"
-          : "PMQMLZXHMQK2AA3XQ7KVVDWAXKGJMFSIGJOC4TSPANGUKQWZZT6R7SB5XE"; // Will be derived from contract
+          : "PMQMLZXHMQK2AA3XQ7KVVDWAXKGJMFSIGJOC4TSPANGUKQWZZT6R7SB5XE";
 
       // Initialize SDK variables
       this.#indexerUrl =
@@ -108,6 +116,15 @@ class AlgoStakeX {
       this.#messageElement = null;
       this.#processing = false;
 
+      // Initialize UI Manager
+      this.#uiManager = new UIManager(this, {
+        disableUi: this.#disableUi,
+        disableToast: this.#disableToast,
+        logo: this.#logo,
+        minimizeUILocation: this.#minimizeUILocation,
+        toastLocation: this.#toastLocation,
+      });
+
       // Load saved UI state (only if UI is not disabled)
       if (!this.#disableUi) {
         const savedState = localStorage.getItem("asx");
@@ -115,18 +132,18 @@ class AlgoStakeX {
           try {
             const parsedState = JSON.parse(savedState);
             this.isMinimized = parsedState.minimized || false;
-            this.theme = parsedState.theme || this.#getSystemTheme();
+            this.theme = parsedState.theme || this.#uiManager.getSystemTheme();
           } catch (e) {
             this.isMinimized = false;
-            this.theme = this.#getSystemTheme();
+            this.theme = this.#uiManager.getSystemTheme();
           }
         } else {
           this.isMinimized = false;
-          this.theme = this.#getSystemTheme();
+          this.theme = this.#uiManager.getSystemTheme();
         }
 
         // Save initial state and initialize UI
-        this.#saveUIState();
+        this.#uiManager.saveUIState(this.isMinimized, this.theme);
         this.#initUI();
       }
     } catch (error) {
@@ -135,270 +152,8 @@ class AlgoStakeX {
   }
 
   /**
-   * SDK parameters Validation
+   *********** SDK private methods
    */
-
-  #validateRequired(value, paramName) {
-    if (value === undefined || value === null) {
-      throw new Error(`${paramName} is required`);
-    }
-    return value;
-  }
-
-  #validateString(value, paramName) {
-    this.#validateRequired(value, paramName);
-    if (typeof value !== "string") {
-      throw new Error(`${paramName} must be a string`);
-    }
-    if (value.trim().length === 0) {
-      throw new Error(`${paramName} cannot be empty`);
-    }
-    return value;
-  }
-
-  #validateEnum(value, paramName, validValues) {
-    this.#validateString(value, paramName);
-    if (!validValues.includes(value)) {
-      throw new Error(`${paramName} must be one of: ${validValues.join(", ")}`);
-    }
-    return value;
-  }
-
-  #validateNumber(value, paramName, options = {}) {
-    if (value === undefined || value === null) {
-      return options.default ?? 0;
-    }
-    if (typeof value !== "number") {
-      throw new Error(`${paramName} must be a number`);
-    }
-    if (!Number.isFinite(value)) {
-      throw new Error(`${paramName} must be a finite number`);
-    }
-    if (options.min !== undefined && value < options.min) {
-      throw new Error(
-        `${paramName} must be greater than or equal to ${options.min}`
-      );
-    }
-    if (options.max !== undefined && value > options.max) {
-      throw new Error(
-        `${paramName} must be less than or equal to ${options.max}`
-      );
-    }
-    return value;
-  }
-
-  #validateBoolean(value, paramName, defaultValue = false) {
-    if (value === undefined || value === null) {
-      return defaultValue;
-    }
-    if (typeof value !== "boolean") {
-      throw new Error(`${paramName} must be a boolean`);
-    }
-    return value;
-  }
-
-  #validateUrl(value, paramName) {
-    this.#validateString(value, paramName);
-    try {
-      new URL(value);
-      return value;
-    } catch (e) {
-      throw new Error(`${paramName} must be a valid URL`);
-    }
-  }
-
-  #validateEnvironment(env) {
-    return this.#validateEnum(env, "Environment", ["testnet", "mainnet"]);
-  }
-
-  #validateNamespace(namespace) {
-    const validatedNamespace = this.#validateString(namespace, "Namespace");
-    if (validatedNamespace.length < 3 || validatedNamespace.length > 20) {
-      throw new Error("Namespace must be between 3 and 20 characters long");
-    }
-    if (!/^[a-zA-Z0-9_-]+$/.test(validatedNamespace)) {
-      throw new Error(
-        "Namespace must contain only alphanumeric characters, hyphens, and underscores"
-      );
-    }
-    return validatedNamespace;
-  }
-
-  #validateTokenId(tokenId) {
-    const validatedId = this.#validateNumber(tokenId, "Token ID", {
-      min: 0,
-    });
-    return BigInt(validatedId);
-  }
-
-  #validateStakingConfig(staking) {
-    if (!staking || typeof staking !== "object") {
-      throw new Error("staking configuration is required");
-    }
-
-    const type = this.#validateEnum(staking.type, "Staking type", [
-      "FLEXIBLE",
-      "FIXED",
-    ]);
-
-    const config = {
-      type,
-      stake_period: undefined,
-      withdraw_penalty: undefined,
-      reward: {
-        type: undefined,
-        value: undefined,
-      },
-    };
-
-    // Validate stake_period (optional for FLEXIBLE)
-    if (staking.stake_period !== undefined) {
-      config.stake_period = this.#validateNumber(
-        staking.stake_period,
-        "Stake period",
-        { min: 0 }
-      );
-    }
-
-    // Validate withdraw_penalty (optional for FLEXIBLE)
-    if (staking.withdraw_penalty !== undefined) {
-      config.withdraw_penalty = this.#validateNumber(
-        staking.withdraw_penalty,
-        "Withdraw penalty",
-        { min: 0, max: 100 }
-      );
-    }
-
-    // Validate reward configuration
-    if (!staking.reward || typeof staking.reward !== "object") {
-      throw new Error("Reward configuration is required");
-    }
-
-    config.reward.type = this.#validateEnum(
-      staking.reward.type,
-      "Reward type",
-      ["APY", "UTILITY"]
-    );
-
-    // Validate reward.value: can be a primitive or an array of tiers
-    if (staking.reward.value !== undefined) {
-      if (Array.isArray(staking.reward.value)) {
-        config.reward.value = staking.reward.value.map((tier, index) => {
-          if (!tier || typeof tier !== "object") {
-            throw new Error(`Tier ${index}: must be an object`);
-          }
-          if (!tier.name || typeof tier.name !== "string") {
-            throw new Error(
-              `Tier ${index}: name is required and must be a string`
-            );
-          }
-          const stakeAmount = this.#validateNumber(
-            tier.stake_amount,
-            `Tier ${index}: stake_amount`,
-            { min: 0 }
-          );
-          if (config.reward.type === "APY") {
-            const valueNum = this.#validateNumber(
-              tier.value,
-              `Tier ${index}: value (APY)`,
-              { min: 0 }
-            );
-            return {
-              name: tier.name,
-              stake_amount: stakeAmount,
-              value: valueNum,
-            };
-          } else {
-            const valueStr = this.#validateString(
-              tier.value,
-              `Tier ${index}: value (Utility)`
-            );
-            return {
-              name: tier.name,
-              stake_amount: stakeAmount,
-              value: valueStr,
-            };
-          }
-        });
-      } else {
-        if (config.reward.type === "APY") {
-          config.reward.value = this.#validateNumber(
-            staking.reward.value,
-            "Reward value (APY)",
-            { min: 0 }
-          );
-        } else {
-          config.reward.value = this.#validateString(
-            staking.reward.value,
-            "Reward value (Utility)"
-          );
-        }
-      }
-    }
-
-    return config;
-  }
-
-  #validateDisableToast(disableToast) {
-    return this.#validateBoolean(disableToast, "disableToast", false);
-  }
-
-  #validateDisableUi(disableUi) {
-    return this.#validateBoolean(disableUi, "disableUi", false);
-  }
-
-  #validateMinimizeUILocation(location) {
-    return (
-      this.#validateEnum(location, "minimizeUILocation", ["left", "right"]) ||
-      "right"
-    );
-  }
-
-  #validateLogo(logo) {
-    if (logo === undefined || logo === null) {
-      return null;
-    }
-
-    const validatedLogo = this.#validateString(logo, "Logo");
-
-    // Check if it's a URL
-    if (
-      validatedLogo.startsWith("http://") ||
-      validatedLogo.startsWith("https://")
-    ) {
-      return this.#validateUrl(validatedLogo, "Logo");
-    }
-
-    // Check if it's a local file path
-    if (
-      validatedLogo.startsWith("./") ||
-      validatedLogo.startsWith("../") ||
-      validatedLogo.startsWith("/")
-    ) {
-      if (
-        !/^[./\\a-zA-Z0-9_-]+\.(png|jpg|jpeg|gif|svg|webp)$/i.test(
-          validatedLogo
-        )
-      ) {
-        throw new Error(
-          "Invalid logo file path. Must be a valid image file path"
-        );
-      }
-      return validatedLogo;
-    }
-
-    throw new Error(
-      "Logo must be either a valid URL or a valid local file path"
-    );
-  }
-
-  #validateToastLocation(location) {
-    return this.#validateEnum(location, "Toast location", [
-      "TOP_LEFT",
-      "TOP_RIGHT",
-    ]);
-  }
-
   #sdkValidationFailed(message) {
     localStorage.removeItem("walletconnect");
     localStorage.removeItem("DeflyWallet.Wallet");
@@ -414,382 +169,75 @@ class AlgoStakeX {
     window.location.reload();
   }
 
-  /**
-   *********** SDK private methods
-   */
   #initUI() {
-    if (this.#disableUi) {
-      return;
-    }
-
-    // Remove any existing
-    const existing = document.getElementById("algostakex-sdk-container");
-    if (existing) existing.remove();
-
-    // Create SDK container and inner UI
-    const container = document.createElement("div");
-    container.id = "algostakex-sdk-container";
-    container.style.display = this.isMinimized ? "none" : "flex";
-
-    container.innerHTML = `
-      <div id="asx-header">
-        <div class="header-left">
-          ${
-            this.#logo
-              ? `<img src="${
-                  this.#logo
-                }" alt="AlgoStakeX" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';" />`
-              : ""
-          }
-          <h3 style="${
-            this.#logo ? "display: none;" : "display: block;"
-          }">AlgoStakeX</h3>
-        </div>
-        <div class="header-right">
-          <button id="asxThemeToggleBtn" title="Toggle Theme">🌓</button>
-          <button id="asxLogoutBtn" title="Logout">⏻</button>
-          <button id="asxMinimizeBtn" title="Minimize">&#x2013;</button>
-        </div>
-      </div>
-
-      <div id="asxWalletChoice">
-        <button class="walletBtn" data-wallet="pera">
-          <img src="https://perawallet.s3.amazonaws.com/images/media-kit/logomark-white.svg" alt="Pera Wallet" />
-          Connect Pera Wallet
-        </button>
-        <button class="walletBtn" data-wallet="defly">
-          <img src="https://docs.defly.app/~gitbook/image?url=https%3A%2F%2F2700986753-files.gitbook.io%2F~%2Ffiles%2Fv0%2Fb%2Fgitbook-x-prod.appspot.com%2Fo%2Fcollections%252FWDbwYIFtoiPa3JoJufCw%252Ficon%252FbQUUOW6VhH6vKR0XH7UB%252Flogo-notext-whiteonblack.png%3Falt%3Dmedia%26token%3D7d62c65b-fd29-47b6-a83b-162caac2fc8f&width=32&dpr=2&quality=100&sign=952138fe&sv=2" alt="Defly Wallet" />
-          Connect Defly Wallet
-        </button>
-      </div>
-
-      <div id="asxUI" style="display:none;">
-        <div id="asxWalletAddressBar" title="Click to copy connected wallet"></div>
-        <div id="asxTabs">
-          <button class="asxTabBtn" data-tab="stake">Stake</button>
-          <button class="asxTabBtn" data-tab="mystakes">My Staking</button>
-        </div>
-        <div id="asxTabContent">
-          <div id="asxStakeTab" class="asxTabPane">
-            <div id="asxAssetList" class="asxAssetList"></div>
-            <div class="asxRow">
-              <button id="asxStakeSelectedBtn">Stake Selected</button>
-            </div>
-          </div>
-          <div id="asxMyStakesTab" class="asxTabPane" style="display:none;">
-            <div id="asxMyStakeSummary"></div>
-            <div class="asxRow">
-              <button id="asxWithdrawBtn">Withdraw</button>
-              <button id="asxEmergencyWithdrawBtn">Emergency Withdraw</button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div id="algostakex-loading-overlay">
-        <div id="algostakex-loader"></div>
-        <div id="algostakex-processing-message"></div>
-      </div>
-    `;
-
-    document.body.appendChild(container);
-
-    // Minimized button
-    const minimizedBtn = document.createElement("button");
-    minimizedBtn.id = "sdkMinimizedBtn";
-    minimizedBtn.innerHTML = this.#logo
-      ? `<img src="${
-          this.#logo
-        }" alt="ASX" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';" /><span style="display: none;">ASX</span>`
-      : "ASX";
-    minimizedBtn.style.display = this.isMinimized ? "block" : "none";
-    minimizedBtn.className = this.#minimizeUILocation;
-    minimizedBtn.addEventListener("click", () => this.maximizeSDK());
-    document.body.appendChild(minimizedBtn);
-
-    // Controls
-    document
-      .getElementById("asxMinimizeBtn")
-      ?.addEventListener("click", () => this.minimizeSDK());
-    document
-      .getElementById("asxThemeToggleBtn")
-      ?.addEventListener("click", () => {
+    // Initialize UI with callbacks
+    this.#uiManager.initUI({
+      onMinimize: () => this.minimizeSDK(),
+      onMaximize: () => this.maximizeSDK(),
+      onThemeToggle: () => {
         this.theme = this.theme === "light" ? "dark" : "light";
-        this.#saveUIState();
-        this.#applyTheme();
-      });
-    document
-      .getElementById("asxLogoutBtn")
-      ?.addEventListener("click", () => this.#handleLogout());
-
-    // Wallet choice
-    document
-      .getElementById("asxWalletChoice")
-      ?.addEventListener("click", async (evt) => {
-        const btn = evt.target.closest(".walletBtn");
-        if (!btn) return;
-        const walletType = btn.getAttribute("data-wallet");
-        await this.#startWalletConnection(walletType);
-      });
-
-    // Tabs
-    container.querySelectorAll(".asxTabBtn").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        const tab = btn.getAttribute("data-tab");
-        container.querySelector("#asxStakeTab").style.display =
-          tab === "stake" ? "block" : "none";
-        container.querySelector("#asxMyStakesTab").style.display =
-          tab === "mystakes" ? "block" : "none";
-        if (tab === "stake") {
-          this.#renderWalletAssets().catch(() =>
-            this.#showToast("Failed to load assets", "error")
+        this.#uiManager.saveUIState(this.isMinimized, this.theme);
+        this.#uiManager.applyTheme();
+      },
+      onLogout: () => this.#handleLogout(),
+      onWalletConnect: (walletType) => this.#startWalletConnection(walletType),
+      onRenderAssets: () => {
+        this.#uiManager
+          .renderWalletAssets(
+            this.#walletConnected,
+            this.account,
+            () => this.getWalletFTs(),
+            (tokenId) => this.getFTMetadata(tokenId),
+            this.#tokenId
+          )
+          .catch(() =>
+            this.#uiManager.showToast("Failed to load assets", "error")
           );
-        }
-      });
-    });
-
-    // Stake actions
-    document
-      .getElementById("asxStakeSelectedBtn")
-      ?.addEventListener("click", async () => {
+      },
+      onStake: async () => {
         try {
           const selected = document.querySelector(".asxAssetItem.selected");
           if (!selected) {
-            this.#showToast("Select an asset first", "warning");
+            this.#uiManager.showToast("Select an asset first", "warning");
             return;
           }
           const amount = Number(selected.getAttribute("data-amount")) || 0;
           if (!amount || amount <= 0) {
-            this.#showToast("Invalid amount", "error");
+            this.#uiManager.showToast("Invalid amount", "error");
             return;
           }
-          this.#showLoadingOverlay("Staking...");
+          this.#uiManager.showLoadingOverlay("Staking...");
           await this.stack({ poolId: this.#namespace, amount });
         } catch (e) {
-          this.#showToast(e.message || "Stake failed", "error");
+          this.#uiManager.showToast(e.message || "Stake failed", "error");
         } finally {
-          this.#hideLoadingOverlay();
+          this.#uiManager.hideLoadingOverlay();
         }
-      });
-    document
-      .getElementById("asxWithdrawBtn")
-      ?.addEventListener("click", async () => {
+      },
+      onWithdraw: async () => {
         try {
           await this.withdraw(this.#namespace);
         } catch (e) {
-          this.#showToast(e.message || "Withdraw failed", "error");
+          this.#uiManager.showToast(e.message || "Withdraw failed", "error");
         }
-      });
-    document
-      .getElementById("asxEmergencyWithdrawBtn")
-      ?.addEventListener("click", async () => {
+      },
+      onEmergencyWithdraw: async () => {
         try {
           await this.emergencyWithdraw(
             this.#namespace,
             this.#stakingConfig.withdraw_penalty || 5
           );
         } catch (e) {
-          this.#showToast(e.message || "Emergency withdraw failed", "error");
+          this.#uiManager.showToast(
+            e.message || "Emergency withdraw failed",
+            "error"
+          );
         }
-      });
+      },
+    });
 
-    // Theme + Toast
-    this.#applyTheme();
-    this.#setupToastContainer();
-
-    // Try restore
+    // Try restore wallet connection
     this.#loadConnectionFromStorage?.();
-  }
-
-  #refreshUI() {
-    if (this.#disableUi) return;
-    const walletBar = document.getElementById("asxWalletAddressBar");
-    const walletChoice = document.getElementById("asxWalletChoice");
-    const ui = document.getElementById("asxUI");
-    if (!walletBar || !walletChoice || !ui) return;
-    if (this.#walletConnected && this.account) {
-      walletBar.innerText = this.account;
-      walletBar.style.display = "block";
-      walletChoice.style.display = "none";
-      ui.style.display = "flex";
-    } else {
-      walletBar.innerText = "";
-      walletBar.style.display = "none";
-      walletChoice.style.display = "flex";
-      ui.style.display = "none";
-    }
-  }
-
-  #setupToastContainer() {
-    if (this.#disableToast || this.#disableUi) {
-      return;
-    }
-
-    let toastContainer = document.getElementById("algostakex-toast-container");
-    if (!toastContainer) {
-      toastContainer = document.createElement("div");
-      toastContainer.id = "algostakex-toast-container";
-      toastContainer.className =
-        this.#toastLocation === "TOP_LEFT" ? "top-left" : "top-right";
-      document.body.appendChild(toastContainer);
-    }
-  }
-
-  async #renderWalletAssets() {
-    try {
-      if (!this.#walletConnected || !this.account) {
-        const list = document.getElementById("asxAssetList");
-        if (list)
-          list.innerHTML =
-            '<div class="asxAssetEmpty">Connect wallet to view assets</div>';
-        return;
-      }
-      const list = document.getElementById("asxAssetList");
-      if (list)
-        list.innerHTML = '<div class="asxAssetLoading">Loading assets...</div>';
-      const fts = await this.getWalletFTs();
-      const targetId = Number(this.#tokenId);
-
-      const filtered = (fts || []).filter(
-        (a) => Number(a.assetId) === targetId
-      );
-      if (!filtered.length) {
-        if (list)
-          list.innerHTML =
-            '<div class="asxAssetEmpty">No matching assets found</div>';
-        return;
-      }
-      // Optionally fetch metadata for display
-      let metaName = "";
-      try {
-        const meta = await this.getFTMetadata(targetId);
-        metaName = meta?.name || "";
-      } catch {}
-      const itemsHtml = filtered
-        .map(
-          (a) => `
-        <div class="asxAssetItem" data-asset-id="${a.assetId}" data-amount="${
-            a.amount
-          }">
-          <div class="asxAssetRow">
-            <div class="asxAssetName">${metaName || "ASA " + a.assetId}</div>
-            <div class="asxAssetAmount">Amount: ${a.amount}</div>
-          </div>
-        </div>`
-        )
-        .join("");
-      if (list) list.innerHTML = itemsHtml;
-      // Selection handler
-      document.querySelectorAll(".asxAssetItem").forEach((el) => {
-        el.addEventListener("click", () => {
-          document
-            .querySelectorAll(".asxAssetItem")
-            .forEach((e2) => e2.classList.remove("selected"));
-          el.classList.add("selected");
-        });
-      });
-    } catch (e) {
-      const list = document.getElementById("asxAssetList");
-      if (list)
-        list.innerHTML = `<div class="asxAssetError">${
-          e.message || "Failed to load assets"
-        }</div>`;
-    }
-  }
-
-  #showToast(message, type = "info") {
-    this.events.emit("toast:show", { message, type });
-    if (this.#disableToast || this.#disableUi) return;
-    const id = "algostakex-toast";
-    const existing = document.getElementById(id);
-    if (existing) existing.remove();
-    const toast = document.createElement("div");
-    toast.id = id;
-    const content = document.createElement("div");
-    content.className = "toast-content";
-    content.innerText = message;
-    const close = document.createElement("button");
-    close.className = "toast-close";
-    close.innerHTML = "×";
-    close.onclick = () => {
-      toast.style.opacity = "0";
-      toast.addEventListener("transitionend", () => toast.remove(), {
-        once: true,
-      });
-    };
-    toast.appendChild(content);
-    toast.appendChild(close);
-    toast.classList.add(
-      type === "error" ? "error" : type === "success" ? "success" : "info"
-    );
-    toast.classList.add(this.#toastLocation.toLowerCase().replace("_", "-"));
-    document.body.appendChild(toast);
-    requestAnimationFrame(() => {
-      toast.style.opacity = "1";
-    });
-    setTimeout(() => close.onclick(), 3500);
-  }
-
-  #showLoadingOverlay(message = "Processing...") {
-    if (this.#disableUi) return;
-    const overlay = document.getElementById("algostakex-loading-overlay");
-    const msg = document.getElementById("algostakex-processing-message");
-    if (!overlay || !msg) return;
-    msg.textContent = message;
-    this.#currentLoadingMessage = message;
-    if (this.theme === "dark") overlay.classList.add("dark-theme");
-    else overlay.classList.remove("dark-theme");
-    requestAnimationFrame(() => {
-      overlay.classList.add("visible");
-    });
-  }
-
-  #hideLoadingOverlay() {
-    if (this.#disableUi) return;
-    const overlay = document.getElementById("algostakex-loading-overlay");
-    if (!overlay) return;
-    requestAnimationFrame(() => {
-      overlay.classList.remove("visible");
-    });
-  }
-
-  #getSystemTheme() {
-    return window.matchMedia("(prefers-color-scheme: dark)").matches
-      ? "dark"
-      : "light";
-  }
-
-  #saveUIState() {
-    if (this.#disableUi) {
-      return;
-    }
-
-    localStorage.setItem(
-      "asx",
-      JSON.stringify({
-        minimized: this.isMinimized,
-        theme: this.theme,
-      })
-    );
-  }
-
-  #applyTheme() {
-    if (this.#disableUi) {
-      return;
-    }
-
-    const container = document.getElementById("algostakex-sdk-container");
-    const minimizedBtn = document.getElementById("sdkMinimizedBtn");
-
-    if (container) {
-      if (this.theme === "dark") {
-        container.classList.add("dark-theme");
-        if (minimizedBtn) minimizedBtn.classList.add("dark-theme");
-      } else {
-        container.classList.remove("dark-theme");
-        if (minimizedBtn) minimizedBtn.classList.remove("dark-theme");
-      }
-    }
   }
 
   async #loadConnectionFromStorage() {
@@ -829,23 +277,26 @@ class AlgoStakeX {
         this.events.emit("wallet:connection:connected", {
           address: this.account,
         });
-        this.#refreshUI();
+        this.#uiManager.refreshUI(this.#walletConnected, this.account);
       } else {
-        this.#refreshUI();
+        this.#uiManager.refreshUI(this.#walletConnected, this.account);
       }
     } catch (error) {
       this.events.emit("wallet:connection:failed", { error: error.message });
-      this.#refreshUI();
+      this.#uiManager.refreshUI(this.#walletConnected, this.account);
     }
   }
 
   async #startWalletConnection(walletType) {
     if (this.#connectionInProgress) {
-      this.#showToast("A wallet connection is already in progress.", "warning");
+      this.#uiManager.showToast(
+        "A wallet connection is already in progress.",
+        "warning"
+      );
       return;
     }
     if (!this.#supportedWallets.includes(walletType)) {
-      this.#showToast("Unsupported wallet selected.", "error");
+      this.#uiManager.showToast("Unsupported wallet selected.", "error");
       return;
     }
     this.#selectedWalletType = walletType;
@@ -861,7 +312,7 @@ class AlgoStakeX {
       this.#walletConnected = true;
       this.account = accounts[0];
       this.#connectionInfo = { address: this.account, walletType };
-      this.#showToast(`Connected to ${walletType} wallet`, "success");
+      this.#uiManager.showToast(`Connected to ${walletType} wallet`, "success");
       this.events.emit("wallet:connected", {
         address: this.account,
         type: walletType,
@@ -869,13 +320,13 @@ class AlgoStakeX {
       this.events.emit("wallet:connection:connected", {
         address: this.account,
       });
-      this.#refreshUI();
+      this.#uiManager.refreshUI(this.#walletConnected, this.account);
     } catch (error) {
       try {
         await connector.disconnect();
         if (connector.killSession) await connector.killSession();
       } catch {}
-      this.#showToast("Failed to connect wallet!", "error");
+      this.#uiManager.showToast("Failed to connect wallet!", "error");
       this.events.emit("wallet:connection:failed", { error: error.message });
     } finally {
       this.#connectionInProgress = false;
@@ -899,87 +350,25 @@ class AlgoStakeX {
     this.account = null;
     this.#connectionInfo = null;
     this.#selectedWalletType = null;
-    this.#refreshUI();
+    this.#uiManager.refreshUI(this.#walletConnected, this.account);
     this.events.emit("wallet:disconnected", {});
     this.events.emit("wallet:connection:disconnected", { address: null });
   }
 
   /**
-   * Helper Methods
+   *********** SDK public methods
    */
 
-  #algosToMicroAlgos(algos) {
-    return Math.round(algos * 1000000);
-  }
-
-  #microAlgosToAlgos(microAlgos) {
-    return microAlgos / 1000000;
-  }
-
   /**
-   ********** Public methods
+   * SDK UI Management
    */
 
   minimizeSDK(initialLoad) {
-    if (this.#disableUi) {
-      return;
-    }
-
-    if (!initialLoad && this.isMinimized) return;
-
-    const container = document.getElementById("algostakex-sdk-container");
-    const minimizedBtn = document.getElementById("sdkMinimizedBtn");
-
-    if (!container || !minimizedBtn) return;
-
-    minimizedBtn.style.right =
-      this.#minimizeUILocation === "right" ? "20px" : "auto";
-    minimizedBtn.style.left =
-      this.#minimizeUILocation === "left" ? "20px" : "auto";
-
-    container.classList.add("minimizing");
-    minimizedBtn.style.display = "block";
-
-    setTimeout(() => {
-      container.style.display = "none";
-      container.classList.remove("minimizing");
-      minimizedBtn.classList.add("showing");
-    }, 300);
-
-    this.isMinimized = true;
-    this.#saveUIState();
-    eventBus.emit("window:size:minimized", { minimized: this.isMinimized });
+    this.#uiManager.minimizeSDK(initialLoad);
   }
 
   maximizeSDK(initialLoad) {
-    if (this.#disableUi) {
-      return;
-    }
-
-    if (!initialLoad && !this.isMinimized) return;
-
-    const container = document.getElementById("algostakex-sdk-container");
-    const minimizedBtn = document.getElementById("sdkMinimizedBtn");
-
-    if (!container || !minimizedBtn) return;
-
-    minimizedBtn.classList.remove("showing");
-    minimizedBtn.classList.add("hiding");
-
-    setTimeout(() => {
-      minimizedBtn.style.display = "none";
-      minimizedBtn.classList.remove("hiding");
-      container.style.display = "flex";
-      container.classList.add("maximizing");
-
-      setTimeout(() => {
-        container.classList.remove("maximizing");
-      }, 300);
-    }, 200);
-
-    this.isMinimized = false;
-    this.#saveUIState();
-    eventBus.emit("window:size:maximized", { minimized: this.isMinimized });
+    this.#uiManager.maximizeSDK(initialLoad);
   }
 
   /**
@@ -1041,7 +430,7 @@ class AlgoStakeX {
       });
 
       if (!this.#disableUi) {
-        this.#refreshUI();
+        this.#uiManager.refreshUI(this.#walletConnected, this.account);
       }
 
       return true;
@@ -1112,7 +501,7 @@ class AlgoStakeX {
       });
 
       if (!this.#disableUi) {
-        this.#refreshUI();
+        this.#uiManager.refreshUI(this.#walletConnected, this.account);
       }
 
       return {
@@ -1161,7 +550,7 @@ class AlgoStakeX {
       eventBus.emit("wallet:disconnected", {});
 
       if (!this.#disableUi) {
-        this.#refreshUI();
+        this.#uiManager.refreshUI(this.#walletConnected, this.account);
       }
 
       return true;
@@ -1175,340 +564,6 @@ class AlgoStakeX {
    * Staking Operations
    */
 
-  async stackingStatus(poolId = this.#namespace) {
-    try {
-      if (!this.#walletConnected || !this.account) {
-        throw new Error("Wallet is not connected");
-      }
-
-      // Read stake data from box storage
-      const stakeKey = this.#getStakeKey(poolId, this.account);
-
-      try {
-        const boxValue = await this.#algodClient
-          .getApplicationBoxByName(this.#contractApplicationId, stakeKey)
-          .do();
-
-        if (!boxValue || !boxValue.value) {
-          return {
-            poolId,
-            exists: false,
-            stakeData: null,
-          };
-        }
-
-        // Decode the stake data from box value
-        // The box contains ARC-4 encoded StakeData struct
-        const stakeData = this.#decodeStakeData(boxValue.value);
-
-        return {
-          poolId,
-          exists: true,
-          stakeData: stakeData,
-        };
-      } catch (error) {
-        // Box doesn't exist
-        if (
-          error.message.includes("box not found") ||
-          error.message.includes("does not exist") ||
-          error.status === 404
-        ) {
-          return {
-            poolId,
-            exists: false,
-            stakeData: null,
-          };
-        }
-        throw error;
-      }
-    } catch (error) {
-      console.error("Error fetching stacking status:", error.message);
-      if (
-        error.message.includes("No stake found") ||
-        error.message.includes("not found") ||
-        error.status === 404
-      ) {
-        return {
-          poolId,
-          exists: false,
-          stakeData: null,
-        };
-      }
-      throw error;
-    }
-  }
-
-  #getStakeKey(poolId, userAddress) {
-    // Create stake key: "stake_" + poolId + "_" + userAddress bytes
-    const prefix = new TextEncoder().encode("stake_");
-    const poolIdBytes = new TextEncoder().encode(poolId);
-    const separator = new TextEncoder().encode("_");
-    const userAddressBytes = algosdk.decodeAddress(userAddress).publicKey;
-
-    const stakeKey = new Uint8Array(
-      prefix.length +
-        poolIdBytes.length +
-        separator.length +
-        userAddressBytes.length
-    );
-    let offset = 0;
-    stakeKey.set(prefix, offset);
-    offset += prefix.length;
-    stakeKey.set(poolIdBytes, offset);
-    offset += poolIdBytes.length;
-    stakeKey.set(separator, offset);
-    offset += separator.length;
-    stakeKey.set(userAddressBytes, offset);
-
-    return stakeKey;
-  }
-
-  #buildStakeBoxName(poolId, userAddress) {
-    // name = "stake_" + (uint16be len + poolId bytes) + (uint16be 1 + '_' ) + address public key (32 bytes)
-    const prefix = new TextEncoder().encode("stake_");
-    const poolIdBytes = new TextEncoder().encode(poolId);
-    const sepByte = new TextEncoder().encode("_");
-    const userPk = algosdk.decodeAddress(userAddress).publicKey;
-
-    const name = new Uint8Array(
-      prefix.length + 2 + poolIdBytes.length + 2 + 1 + userPk.length
-    );
-    let o = 0;
-    name.set(prefix, o);
-    o += prefix.length;
-    // uint16be length for poolId
-    name[o++] = (poolIdBytes.length >> 8) & 0xff;
-    name[o++] = poolIdBytes.length & 0xff;
-    name.set(poolIdBytes, o);
-    o += poolIdBytes.length;
-    // uint16be length for '_'
-    name[o++] = 0x00;
-    name[o++] = 0x01;
-    name.set(sepByte, o);
-    o += 1;
-    name.set(userPk, o);
-    return name;
-  }
-
-  #decodeStakeData(boxValueBytes) {
-    // Decode ARC-4 encoded StakeData struct from box value
-    // The box contains ARC-4 encoded data
-    try {
-      const view = new DataView(boxValueBytes.buffer);
-      let offset = 0;
-
-      // ARC-4 encoding for structs includes a type prefix (2 bytes)
-      // Skip type prefix (2 bytes for struct type ID)
-      offset += 2;
-
-      // Decode staker (arc4.Address = 32 bytes)
-      const stakerBytes = boxValueBytes.slice(offset, offset + 32);
-      const staker = algosdk.encodeAddress(stakerBytes);
-      offset += 32;
-
-      // Decode tokenId (arc4.Uint64 = 8 bytes)
-      const tokenId = view.getBigUint64(offset, false);
-      offset += 8;
-
-      // Decode isFlexible (arc4.Bool = 1 byte)
-      const isFlexible = boxValueBytes[offset] !== 0;
-      offset += 1;
-
-      // Decode amount (arc4.Uint64 = 8 bytes)
-      const amount = view.getBigUint64(offset, false);
-      offset += 8;
-
-      // Decode stakedAt (arc4.Uint64 = 8 bytes)
-      const stakedAt = view.getBigUint64(offset, false);
-      offset += 8;
-
-      // Decode lockPeriod (arc4.Uint64 = 8 bytes)
-      const lockPeriod = view.getBigUint64(offset, false);
-      offset += 8;
-
-      // Decode lockEndTime (arc4.Uint64 = 8 bytes)
-      const lockEndTime = view.getBigUint64(offset, false);
-      offset += 8;
-
-      // Decode rewardType (arc4.Str = length (2 bytes) + string bytes)
-      const rewardTypeLength = view.getUint16(offset, false);
-      offset += 2;
-      const rewardTypeBytes = boxValueBytes.slice(
-        offset,
-        offset + rewardTypeLength
-      );
-      const rewardType = new TextDecoder().decode(rewardTypeBytes);
-      offset += rewardTypeLength;
-
-      // Decode rewardRate (arc4.Uint64 = 8 bytes)
-      const rewardRate = view.getBigUint64(offset, false);
-      offset += 8;
-
-      // Decode utility (arc4.Str = length (2 bytes) + string bytes)
-      const utilityLength = view.getUint16(offset, false);
-      offset += 2;
-      const utilityBytes = boxValueBytes.slice(offset, offset + utilityLength);
-      const utility = new TextDecoder().decode(utilityBytes);
-      offset += utilityLength;
-
-      // Decode totalRewardsClaimed (arc4.Uint64 = 8 bytes)
-      const totalRewardsClaimed = view.getBigUint64(offset, false);
-      offset += 8;
-
-      return {
-        staker: staker,
-        tokenId: Number(tokenId),
-        isFlexible: isFlexible,
-        amount: Number(amount),
-        stakedAt: Number(stakedAt),
-        lockPeriod: Number(lockPeriod),
-        lockEndTime: Number(lockEndTime),
-        rewardType: rewardType,
-        rewardRate: Number(rewardRate),
-        utility: utility,
-        totalRewardsClaimed: Number(totalRewardsClaimed),
-      };
-    } catch (error) {
-      console.error("Error decoding stake data:", error);
-      throw error;
-    }
-  }
-
-  async validateStacking(poolId = this.#namespace, minimumAmount = 0) {
-    try {
-      if (!this.#walletConnected || !this.account) {
-        return { valid: false, reason: "Wallet not connected" };
-      }
-
-      // Check stacking status first
-      const status = await this.stackingStatus(poolId);
-
-      if (!status.exists || !status.stakeData) {
-        return {
-          valid: false,
-          reason: "No active stake found",
-        };
-      }
-
-      // Validate minimum amount (assuming stakeData has amount field)
-      // Note: This will need to be updated based on actual stakeData structure
-      const stakeAmount = status.stakeData?.amount || 0;
-      const isValid = stakeAmount >= minimumAmount;
-
-      return {
-        valid: isValid,
-        reason: isValid
-          ? "Stake is valid"
-          : "Stake does not meet minimum requirements",
-      };
-    } catch (error) {
-      console.error("Error validating stacking:", error.message);
-      return { valid: false, reason: error.message };
-    }
-  }
-
-  async getWalletFTs() {
-    try {
-      if (!this.#walletConnected || !this.account) {
-        throw new Error("Wallet is not connected");
-      }
-
-      // In browser, pass empty string token instead of undefined
-      const indexer = new algosdk.Indexer("", this.#indexerUrl, 443);
-
-      const accountInfo = await indexer.lookupAccountByID(this.account).do();
-
-      const assets = accountInfo.account.assets || [];
-
-      // Filter for FTs (non-zero decimals typically indicates FT)
-      const fts = assets
-        .filter((asset) => asset.amount > 0)
-        .map((asset) => {
-          return {
-            assetId: asset.assetId,
-            amount: asset.amount,
-            isFrozen: asset.isFrozen || false,
-          };
-        });
-
-      return fts;
-    } catch (error) {
-      console.error("Error fetching wallet FTs:", error.message);
-      throw error;
-    }
-  }
-
-  async getFTMetadata(assetId) {
-    try {
-      // In browser, pass empty string token instead of undefined
-      const indexer = new algosdk.Indexer("", this.#indexerUrl, 443);
-
-      const assetInfo = await indexer.lookupAssetByID(assetId).do();
-      const asset = assetInfo.asset;
-
-      return {
-        assetId: asset.index,
-        name: asset.params.name,
-        unitName: asset.params["unit-name"],
-        decimals: asset.params.decimals,
-        totalSupply: asset.params.total,
-        creator: asset.params.creator,
-        url: asset.params.url,
-        metadataHash: asset.params["metadata-hash"],
-      };
-    } catch (error) {
-      console.error("Error fetching FT metadata:", error.message);
-      throw error;
-    }
-  }
-
-  async optInAsset(assetId) {
-    try {
-      if (!this.#walletConnected || !this.account) {
-        throw new Error("Wallet is not connected");
-      }
-
-      const suggestedParams = await this.#algodClient
-        .getTransactionParams()
-        .do();
-
-      const optInTxn =
-        algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
-          sender: this.account,
-          receiver: this.account,
-          amount: 0,
-          assetIndex: Number(assetId),
-          suggestedParams,
-        });
-
-      let signedTxn;
-      if (this.#mnemonicAccount) {
-        signedTxn = [optInTxn.signTxn(this.#mnemonicAccount.sk)];
-      } else {
-        const walletConnector =
-          this.#walletConnectors[this.#selectedWalletType];
-        if (!walletConnector) {
-          throw new Error("No wallet connector available");
-        }
-        const signedGroup = await walletConnector.signTransaction([
-          [{ txn: optInTxn, signers: [this.account] }],
-        ]);
-        signedTxn = Array.isArray(signedGroup[0])
-          ? signedGroup[0]
-          : signedGroup;
-      }
-
-      const { txid } = await this.#algodClient
-        .sendRawTransaction(signedTxn)
-        .do();
-      await algosdk.waitForConfirmation(this.#algodClient, txid, 10);
-      return txid;
-    } catch (error) {
-      // If already opted-in, Algod can throw; caller may ignore
-      throw error;
-    }
-  }
-
   async stack({
     poolId = this.#namespace,
     amount,
@@ -1517,12 +572,12 @@ class AlgoStakeX {
       : null,
     rewardType = this.#stakingConfig.reward.type,
     rewardRate = this.#stakingConfig.reward.type === "APY"
-      ? this.#stakingConfig.reward.value.value
+      ? this.#stakingConfig.reward?.value?.value
         ? this.#stakingConfig.reward.value.value
         : this.#stakingConfig.reward.value
       : 0,
     utility = this.#stakingConfig.reward.type === "UTILITY"
-      ? this.#stakingConfig.reward.value.value
+      ? this.#stakingConfig.reward?.value?.value
         ? this.#stakingConfig.reward.value.value
         : this.#stakingConfig.reward.value
       : "",
@@ -1610,7 +665,7 @@ class AlgoStakeX {
         });
 
       // Build box reference for stake data
-      const boxName = this.#buildStakeBoxName(poolId, this.account);
+      const boxName = buildStakeBoxName(poolId, this.account);
       const stakeBoxRef = {
         appIndex: this.#contractApplicationId,
         name: boxName,
@@ -1779,6 +834,208 @@ class AlgoStakeX {
       throw error;
     }
   }
+
+  async stackingStatus(poolId = this.#namespace) {
+    try {
+      if (!this.#walletConnected || !this.account) {
+        throw new Error("Wallet is not connected");
+      }
+
+      // Read stake data from box storage
+      const stakeKey = getStakeKey(poolId, this.account);
+
+      try {
+        const boxValue = await this.#algodClient
+          .getApplicationBoxByName(this.#contractApplicationId, stakeKey)
+          .do();
+
+        if (!boxValue || !boxValue.value) {
+          return {
+            poolId,
+            exists: false,
+            stakeData: null,
+          };
+        }
+
+        // Decode the stake data from box value
+        // The box contains ARC-4 encoded StakeData struct
+        const stakeData = decodeStakeData(boxValue.value);
+
+        return {
+          poolId,
+          exists: true,
+          stakeData: stakeData,
+        };
+      } catch (error) {
+        // Box doesn't exist
+        if (
+          error.message.includes("box not found") ||
+          error.message.includes("does not exist") ||
+          error.status === 404
+        ) {
+          return {
+            poolId,
+            exists: false,
+            stakeData: null,
+          };
+        }
+        throw error;
+      }
+    } catch (error) {
+      console.error("Error fetching stacking status:", error.message);
+      if (
+        error.message.includes("No stake found") ||
+        error.message.includes("not found") ||
+        error.status === 404
+      ) {
+        return {
+          poolId,
+          exists: false,
+          stakeData: null,
+        };
+      }
+      throw error;
+    }
+  }
+
+  async validateStacking(poolId = this.#namespace, minimumAmount = 0) {
+    try {
+      if (!this.#walletConnected || !this.account) {
+        return { valid: false, reason: "Wallet not connected" };
+      }
+
+      // Check stacking status first
+      const status = await this.stackingStatus(poolId);
+
+      if (!status.exists || !status.stakeData) {
+        return {
+          valid: false,
+          reason: "No active stake found",
+        };
+      }
+
+      // Validate minimum amount (assuming stakeData has amount field)
+      // Note: This will need to be updated based on actual stakeData structure
+      const stakeAmount = status.stakeData?.amount || 0;
+      const isValid = stakeAmount >= minimumAmount;
+
+      return {
+        valid: isValid,
+        reason: isValid
+          ? "Stake is valid"
+          : "Stake does not meet minimum requirements",
+      };
+    } catch (error) {
+      console.error("Error validating stacking:", error.message);
+      return { valid: false, reason: error.message };
+    }
+  }
+
+  async getWalletFTs() {
+    try {
+      if (!this.#walletConnected || !this.account) {
+        throw new Error("Wallet is not connected");
+      }
+
+      // In browser, pass empty string token instead of undefined
+      const indexer = new algosdk.Indexer("", this.#indexerUrl, 443);
+
+      const accountInfo = await indexer.lookupAccountByID(this.account).do();
+
+      const assets = accountInfo.account.assets || [];
+
+      // Filter for FTs (non-zero decimals typically indicates FT)
+      const fts = assets
+        .filter((asset) => asset.amount > 0)
+        .map((asset) => {
+          return {
+            assetId: asset.assetId,
+            amount: asset.amount,
+            isFrozen: asset.isFrozen || false,
+          };
+        });
+
+      return fts;
+    } catch (error) {
+      console.error("Error fetching wallet FTs:", error.message);
+      throw error;
+    }
+  }
+
+  async getFTMetadata(assetId) {
+    try {
+      // In browser, pass empty string token instead of undefined
+      const indexer = new algosdk.Indexer("", this.#indexerUrl, 443);
+
+      const assetInfo = await indexer.lookupAssetByID(assetId).do();
+      const asset = assetInfo.asset;
+
+      return {
+        assetId: asset.index,
+        name: asset.params.name,
+        unitName: asset.params["unit-name"],
+        decimals: asset.params.decimals,
+        totalSupply: asset.params.total,
+        creator: asset.params.creator,
+        url: asset.params.url,
+        metadataHash: asset.params["metadata-hash"],
+      };
+    } catch (error) {
+      console.error("Error fetching FT metadata:", error.message);
+      throw error;
+    }
+  }
+
+  async optInAsset(assetId) {
+    try {
+      if (!this.#walletConnected || !this.account) {
+        throw new Error("Wallet is not connected");
+      }
+
+      const suggestedParams = await this.#algodClient
+        .getTransactionParams()
+        .do();
+
+      const optInTxn =
+        algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
+          sender: this.account,
+          receiver: this.account,
+          amount: 0,
+          assetIndex: Number(assetId),
+          suggestedParams,
+        });
+
+      let signedTxn;
+      if (this.#mnemonicAccount) {
+        signedTxn = [optInTxn.signTxn(this.#mnemonicAccount.sk)];
+      } else {
+        const walletConnector =
+          this.#walletConnectors[this.#selectedWalletType];
+        if (!walletConnector) {
+          throw new Error("No wallet connector available");
+        }
+        const signedGroup = await walletConnector.signTransaction([
+          [{ txn: optInTxn, signers: [this.account] }],
+        ]);
+        signedTxn = Array.isArray(signedGroup[0])
+          ? signedGroup[0]
+          : signedGroup;
+      }
+
+      const { txid } = await this.#algodClient
+        .sendRawTransaction(signedTxn)
+        .do();
+      await algosdk.waitForConfirmation(this.#algodClient, txid, 10);
+      return txid;
+    } catch (error) {
+      // If already opted-in, Algod can throw; caller may ignore
+      throw error;
+    }
+  }
+
+  /**
+   * Admin Operations
+   */
 
   async emergencyWithdraw(poolId = this.#namespace, penaltyPercentage = 5) {
     try {
