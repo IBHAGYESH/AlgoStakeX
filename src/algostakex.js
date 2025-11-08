@@ -1290,8 +1290,3 @@ class AlgoStakeX {
 }
 
 export default AlgoStakeX;
-
-// Expose to window for browser usage
-if (typeof window !== "undefined") {
-  window.AlgoStakeX = AlgoStakeX;
-}
