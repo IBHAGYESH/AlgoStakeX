@@ -36,6 +36,7 @@ class AlgoStakeX {
   #supportedNetworks;
   #theme;
   #toastLocation;
+  #mnemonicAccount; // For programmatic wallet connection
   #uiManager; // UI Manager instance
 
   // ==========================================
@@ -53,7 +54,6 @@ class AlgoStakeX {
   #treasuryWallet;
   #tokenId;
   #stakingConfig;
-  #mnemonicAccount; // For programmatic wallet connection
 
   constructor({
     token_id,
@@ -179,18 +179,18 @@ class AlgoStakeX {
   // COMMON SDK PRIVATE METHODS
   // ==========================================
 
-  #initUI() {
+  async #initUI() {
     // Initialize UI with callbacks
     this.#uiManager.initUI({
+      onWalletConnect: (walletType) => this.#startWalletConnection(walletType),
       onMinimize: () => this.minimizeSDK(),
       onMaximize: () => this.maximizeSDK(),
+      onLogout: () => this.#handleLogout(),
       onThemeToggle: () => {
         this.theme = this.theme === "light" ? "dark" : "light";
         this.#uiManager.saveUIState(this.isMinimized, this.theme);
         this.#uiManager.applyTheme();
       },
-      onLogout: () => this.#handleLogout(),
-      onWalletConnect: (walletType) => this.#startWalletConnection(walletType),
       onRenderAssets: () => {
         this.#uiManager
           .renderWalletAssets(
@@ -247,53 +247,77 @@ class AlgoStakeX {
     });
 
     // Try restore wallet connection
-    this.#loadConnectionFromStorage?.();
+    this.#loadConnectionFromStorage();
   }
 
   async #loadConnectionFromStorage() {
     try {
+      // Check for wallet connection data in localStorage
+      const walletconnect = localStorage.getItem("walletconnect");
       const peraWallet = localStorage.getItem("PeraWallet.Wallet");
       const deflyWallet = localStorage.getItem("DeflyWallet.Wallet");
+
       let walletType = null;
       let accounts = null;
+
+      // Try to reconnect to existing sessions
       if (peraWallet) {
         try {
-          const a = await this.#walletConnectors.pera.reconnectSession();
-          if (a && a.length) {
+          const peraAccounts =
+            await this.#walletConnectors.pera.reconnectSession();
+          if (peraAccounts && peraAccounts.length > 0) {
             walletType = "pera";
-            accounts = a;
+            accounts = peraAccounts;
           }
-        } catch {}
+        } catch (error) {
+          console.log("Failed to reconnect to Pera wallet:", error.message);
+        }
       }
+
       if (!accounts && deflyWallet) {
         try {
-          const a = await this.#walletConnectors.defly.reconnectSession();
-          if (a && a.length) {
+          const deflyAccounts =
+            await this.#walletConnectors.defly.reconnectSession();
+          if (deflyAccounts && deflyAccounts.length > 0) {
             walletType = "defly";
-            accounts = a;
+            accounts = deflyAccounts;
           }
-        } catch {}
+        } catch (error) {
+          console.log("Failed to reconnect to Defly wallet:", error.message);
+        }
       }
-      if (accounts && accounts.length && walletType) {
+
+      // If we found a valid session, restore the connection
+      if (accounts && accounts.length > 0 && walletType) {
         this.#walletConnected = true;
         this.account = accounts[0];
         this.#selectedWalletType = walletType;
         this.#connectionInfo = { address: this.account, walletType };
-        // Emit both for compatibility
-        this.events.emit("wallet:connected", {
-          address: this.account,
-          type: walletType,
-        });
-        this.events.emit("wallet:connection:connected", {
-          address: this.account,
-        });
-        this.#uiManager.showSDKUI();
+
+        this.#uiManager.showToast(
+          `Restored connection to ${walletType} wallet`,
+          "success"
+        );
+
+        if (!this.#disableUi) {
+          this.#uiManager.showSDKUI();
+        }
+        eventBus.emit("wallet:connection:connected", { address: this.account });
       } else {
-        this.#uiManager.showSDKUI();
+        // No valid session found, reset to login UI
+        if (!this.#disableUi) {
+          this.#resetToLoginUI();
+        }
       }
     } catch (error) {
-      this.events.emit("wallet:connection:failed", { error: error.message });
-      this.#uiManager.resetToLoginUI();
+      console.error("Failed to restore connection", error);
+      this.#uiManager.showToast("Failed to restore connection!", "error");
+      eventBus.emit("wallet:connection:failed", {
+        error: "Failed to restore connection",
+      });
+      if (!this.#disableUi) {
+        this.#resetToLoginUI();
+      }
     }
   }
 
@@ -370,11 +394,7 @@ class AlgoStakeX {
         this.#uiManager.hideTemporaryWalletConnectionUI();
       }
       this.#uiManager.showToast(`Connected to ${walletType} wallet`, "success");
-      this.events.emit("wallet:connected", {
-        address: this.account,
-        type: walletType,
-      });
-      this.events.emit("wallet:connection:connected", { address: this.account });
+      eventBus.emit("wallet:connection:connected", { address: this.account });
       this.#connectionInProgress = false;
     } catch (error) {
       if (error.message === "Wallet connection timed out.") {
@@ -417,11 +437,7 @@ class AlgoStakeX {
                 `Connected to existing ${walletType} session`,
                 "success"
               );
-              this.events.emit("wallet:connected", {
-                address: this.account,
-                type: walletType,
-              });
-              this.events.emit("wallet:connection:connected", {
+              eventBus.emit("wallet:connection:connected", {
                 address: this.account,
               });
               return; // Exit successfully
@@ -435,7 +451,7 @@ class AlgoStakeX {
         }
 
         this.#uiManager.showToast("Failed to connect wallet!", "error");
-        this.events.emit("wallet:connection:failed", {
+        eventBus.emit("wallet:connection:failed", {
           error: "Failed to connect wallet!",
         });
         if (this.#disableUi) {
@@ -448,26 +464,57 @@ class AlgoStakeX {
   }
 
   async #handleLogout() {
-    if (this.processing) return;
-    if (!confirm("Are you sure you want to logout?")) return;
-    try {
-      if (this.#selectedWalletType) {
-        const connector = this.#walletConnectors[this.#selectedWalletType];
-        if (connector?.disconnect) await connector.disconnect();
-        if (connector?.killSession) await connector.killSession();
+    if (this.processing) {
+      return;
+    }
+    if (confirm("Are you sure you want to logout?")) {
+      try {
+        if (
+          this.#selectedWalletType &&
+          this.#walletConnectors[this.#selectedWalletType]
+        ) {
+          const connector = this.#walletConnectors[this.#selectedWalletType];
+          await connector.disconnect();
+          if (connector.killSession) {
+            await connector.killSession(); // Extra hard-kill if supported
+          }
+        }
+
+        localStorage.removeItem("walletconnect");
+        localStorage.removeItem("DeflyWallet.Wallet");
+        localStorage.removeItem("PeraWallet.Wallet");
+      } catch (error) {
+        console.error("Failed to disconnect wallet session:", error);
       }
-      localStorage.removeItem("walletconnect");
-      localStorage.removeItem("DeflyWallet.Wallet");
-      localStorage.removeItem("PeraWallet.Wallet");
-    } catch {}
+
+      eventBus.emit("wallet:connection:disconnected", {
+        address: this.account,
+      });
+      this.#uiManager.showToast("Logged out successfully.", "success");
+      if (!this.#disableUi) {
+        this.#resetToLoginUI();
+      } else {
+        // Reset internal state when UI is disabled
+        this.#walletConnected = false;
+        this.account = null;
+        this.#connectionInfo = null;
+        this.#selectedWalletType = null;
+      }
+    }
+  }
+
+  #resetToLoginUI() {
     this.#walletConnected = false;
     this.account = null;
     this.#connectionInfo = null;
     this.#selectedWalletType = null;
+
     this.#uiManager.resetToLoginUI();
-    this.events.emit("wallet:disconnected", {});
-    this.events.emit("wallet:connection:disconnected", { address: null });
   }
+
+  /**
+   *********** SDK public methods
+   */
 
   // ==========================================
   // COMMON SDK PUBLIC METHODS
@@ -483,76 +530,6 @@ class AlgoStakeX {
 
   maximizeSDK(initialLoad) {
     this.#uiManager.maximizeSDK(initialLoad);
-  }
-
-  /**
-   * Treasury Wallet Management
-   */
-
-  addTreasuryWallet(walletAddress, mnemonic) {
-    try {
-      if (!walletAddress || typeof walletAddress !== "string") {
-        throw new Error("Treasury wallet address is required");
-      }
-
-      if (walletAddress.length !== 58) {
-        throw new Error("Treasury wallet address must be 58 characters long");
-      }
-
-      if (!/^[A-Z2-7]{58}$/.test(walletAddress)) {
-        throw new Error("Invalid Algorand wallet address format");
-      }
-
-      if (!mnemonic || typeof mnemonic !== "string") {
-        throw new Error("Treasury wallet mnemonic is required");
-      }
-
-      // Validate mnemonic format
-      const mnemonicWords = mnemonic.trim().split(/\s+/);
-      if (mnemonicWords.length !== 25) {
-        throw new Error("Mnemonic must contain 25 words");
-      }
-
-      // Verify the mnemonic generates the correct address
-      try {
-        const account = algosdk.mnemonicToSecretKey(mnemonic);
-        const derivedAddr =
-          typeof account.addr === "string"
-            ? account.addr
-            : account.addr?.publicKey
-            ? algosdk.encodeAddress(account.addr.publicKey)
-            : String(account.addr || "");
-        if (derivedAddr !== walletAddress) {
-          throw new Error(
-            "Mnemonic does not match the provided wallet address"
-          );
-        }
-      } catch (error) {
-        throw new Error("Invalid mnemonic");
-      }
-
-      this.#treasuryWallet = {
-        address: walletAddress,
-        mnemonic: mnemonic,
-      };
-
-      this.sdkEnabled = true;
-
-      // Emit event
-      eventBus.emit("treasury:added", {
-        address: walletAddress,
-      });
-
-      if (!this.#disableUi) {
-        this.#uiManager.showSDKUI();
-      }
-
-      return true;
-    } catch (error) {
-      console.error("Error adding treasury wallet:", error.message);
-      eventBus.emit("treasury:add:failed", { error: error.message });
-      throw error;
-    }
   }
 
   /**
@@ -677,6 +654,75 @@ class AlgoStakeX {
   // ==========================================
   // SDK-SPECIFIC PUBLIC METHODS (ALGOSTAKEX)
   // ==========================================
+
+  /**
+   * Treasury Wallet Management
+   */
+  addTreasuryWallet(walletAddress, mnemonic) {
+    try {
+      if (!walletAddress || typeof walletAddress !== "string") {
+        throw new Error("Treasury wallet address is required");
+      }
+
+      if (walletAddress.length !== 58) {
+        throw new Error("Treasury wallet address must be 58 characters long");
+      }
+
+      if (!/^[A-Z2-7]{58}$/.test(walletAddress)) {
+        throw new Error("Invalid Algorand wallet address format");
+      }
+
+      if (!mnemonic || typeof mnemonic !== "string") {
+        throw new Error("Treasury wallet mnemonic is required");
+      }
+
+      // Validate mnemonic format
+      const mnemonicWords = mnemonic.trim().split(/\s+/);
+      if (mnemonicWords.length !== 25) {
+        throw new Error("Mnemonic must contain 25 words");
+      }
+
+      // Verify the mnemonic generates the correct address
+      try {
+        const account = algosdk.mnemonicToSecretKey(mnemonic);
+        const derivedAddr =
+          typeof account.addr === "string"
+            ? account.addr
+            : account.addr?.publicKey
+            ? algosdk.encodeAddress(account.addr.publicKey)
+            : String(account.addr || "");
+        if (derivedAddr !== walletAddress) {
+          throw new Error(
+            "Mnemonic does not match the provided wallet address"
+          );
+        }
+      } catch (error) {
+        throw new Error("Invalid mnemonic");
+      }
+
+      this.#treasuryWallet = {
+        address: walletAddress,
+        mnemonic: mnemonic,
+      };
+
+      this.sdkEnabled = true;
+
+      // Emit event
+      eventBus.emit("treasury:added", {
+        address: walletAddress,
+      });
+
+      if (!this.#disableUi) {
+        this.#uiManager.showSDKUI();
+      }
+
+      return true;
+    } catch (error) {
+      console.error("Error adding treasury wallet:", error.message);
+      eventBus.emit("treasury:add:failed", { error: error.message });
+      throw error;
+    }
+  }
 
   /**
    * Staking Operations
