@@ -178,6 +178,34 @@
   transform: scale(0.8);
 }
 
+#algox-minimized-btn::before {
+  content: "";
+  position: absolute;
+  top: -3px;
+  left: -3px;
+  right: -3px;
+  bottom: -3px;
+  border-radius: 50%;
+  border: 3px solid transparent;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  z-index: 99999999;
+  pointer-events: none;
+}
+
+#algox-minimized-btn.processing::before {
+  opacity: 1;
+  border-top-color: #3498db;
+  border-right-color: #3498db;
+  animation: algox-spin 1s linear infinite;
+  z-index: 99999999;
+}
+
+.dark-theme #algox-minimized-btn.processing::before {
+  border-top-color: #3498db;
+  border-right-color: #3498db;
+}
+
 /* Header */
 #algox-header {
   display: flex;
@@ -219,6 +247,7 @@
 #algox-header .header-right {
   display: flex;
   gap: 4px;
+  align-items: center;
 }
 
 #algox-header .header-right button {
@@ -307,21 +336,26 @@
 
 /* Wallet Address Bar */
 #algox-wallet-address {
-  font-size: 12px;
-  color: #111827;
-  background: #f3f4f6;
-  border: 1px solid #e5e7eb;
-  border-radius: 6px;
-  padding: 8px 10px;
-  word-break: break-all;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+  user-select: text;
   cursor: pointer;
   display: none;
+  color: #111827;
+  padding: 12px 15px;
+  font-size: 0.85rem;
+  font-family: monospace;
+  background-color: #f8f9fa;
+  border-top: 1px solid #ddd;
+  letter-spacing: 0.5px;
 }
 
 .dark-theme #algox-wallet-address {
   color: #f9fafb;
-  background: #1f2937;
-  border-color: #374151;
+  background-color: #2d2d2d;
+  border-top-color: #444;
 }
 
 /* Footer */
@@ -439,6 +473,81 @@
 
 #algox-toast.info {
   border-left: 4px solid #3498db;
+}
+
+/* Temporary Wallet Connection UI (Headless Mode) */
+#algox-temp-wallet-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 999999;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+#algox-temp-wallet-overlay .temp-wallet-container {
+  background: white;
+  padding: 2rem;
+  border-radius: 12px;
+  text-align: center;
+  max-width: 400px;
+  width: 90%;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+  margin: 1rem;
+}
+
+#algox-temp-wallet-overlay .temp-wallet-title {
+  margin: 0 0 1rem 0;
+  color: #1f2937;
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+#algox-temp-wallet-overlay .temp-wallet-message {
+  margin: 0 0 1.5rem 0;
+  color: #6b7280;
+  font-size: 1rem;
+  line-height: 1.5;
+}
+
+#algox-temp-wallet-overlay .temp-wallet-spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid #e5e7eb;
+  border-top: 4px solid #3b82f6;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin: 0 auto 1rem auto;
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+#algox-temp-wallet-overlay .temp-wallet-cancel-btn {
+  background: #ef4444;
+  color: white;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+#algox-temp-wallet-overlay .temp-wallet-cancel-btn:hover {
+  background: #dc2626;
 }
 
 /* ==========================================

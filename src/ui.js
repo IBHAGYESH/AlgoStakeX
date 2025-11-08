@@ -52,10 +52,14 @@ export class UIManager {
         <div class="header-left">
           ${
             this.#logo
-              ? `<img src="${this.#logo}" alt="AlgoStakeX" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';" />`
+              ? `<img src="${
+                  this.#logo
+                }" alt="AlgoStakeX" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';" />`
               : ""
           }
-          <h3 style="${this.#logo ? "display: none;" : "display: block;"}">AlgoStakeX</h3>
+          <h3 style="${
+            this.#logo ? "display: none;" : "display: block;"
+          }">AlgoStakeX</h3>
         </div>
         <div class="header-right">
           <button id="algox-theme-btn" title="Toggle Theme">🌓</button>
@@ -201,7 +205,9 @@ export class UIManager {
       ?.addEventListener("click", async () => callbacks.onEmergencyWithdraw());
 
     // Maximized button
-    document.getElementById("algox-minimized-btn").addEventListener("click", () => callbacks.onMaximize());
+    document
+      .getElementById("algox-minimized-btn")
+      .addEventListener("click", () => callbacks.onMaximize());
 
     // Copy to clipboard for wallet address bar
     const walletAddressBar = document.getElementById("algox-wallet-address");
@@ -505,7 +511,7 @@ export class UIManager {
     }
 
     localStorage.setItem(
-      "asx",
+      "axs",
       JSON.stringify({
         minimized: isMinimized,
         theme: theme,
