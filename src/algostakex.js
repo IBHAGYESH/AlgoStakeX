@@ -19,6 +19,9 @@ const encoder = new algosdk.ABIContract({
 });
 
 class AlgoStakeX {
+  // ==========================================
+  // COMMON SDK PRIVATE FIELDS
+  // ==========================================
   #walletConnectors;
   #walletConnected;
   #connectionInfo;
@@ -26,28 +29,31 @@ class AlgoStakeX {
   #supportedWallets;
   #selectedWalletType;
   #algodClient;
-  #contractApplicationId;
-  #contractWalletAddress;
-  #indexerUrl;
-  #messageElement;
-  #minimizeUILocation;
   #disableToast;
   #disableUi;
+  #minimizeUILocation;
   #logo;
   #supportedNetworks;
   #theme;
   #toastLocation;
+  #uiManager; // UI Manager instance
+
+  // ==========================================
+  // SDK-SPECIFIC PRIVATE FIELDS (ALGOSTAKEX)
+  // ==========================================
+  #contractApplicationId;
+  #contractWalletAddress;
+  #indexerUrl;
+  #messageElement;
   #currentLoadingMessage;
   #tempWalletOverlay;
   #namespace;
-  //
   #processing;
   #network;
   #treasuryWallet;
   #tokenId;
   #stakingConfig;
   #mnemonicAccount; // For programmatic wallet connection
-  #uiManager; // UI Manager instance
 
   constructor({
     token_id,
@@ -169,6 +175,10 @@ class AlgoStakeX {
     window.location.reload();
   }
 
+  // ==========================================
+  // COMMON SDK PRIVATE METHODS
+  // ==========================================
+
   #initUI() {
     // Initialize UI with callbacks
     this.#uiManager.initUI({
@@ -277,13 +287,13 @@ class AlgoStakeX {
         this.events.emit("wallet:connection:connected", {
           address: this.account,
         });
-        this.#uiManager.refreshUI(this.#walletConnected, this.account);
+        this.#uiManager.showSDKUI();
       } else {
-        this.#uiManager.refreshUI(this.#walletConnected, this.account);
+        this.#uiManager.showSDKUI();
       }
     } catch (error) {
       this.events.emit("wallet:connection:failed", { error: error.message });
-      this.#uiManager.refreshUI(this.#walletConnected, this.account);
+      this.#uiManager.resetToLoginUI();
     }
   }
 
@@ -295,41 +305,145 @@ class AlgoStakeX {
       );
       return;
     }
+
     if (!this.#supportedWallets.includes(walletType)) {
       this.#uiManager.showToast("Unsupported wallet selected.", "error");
       return;
     }
+
     this.#selectedWalletType = walletType;
-    const connector = this.#walletConnectors[walletType];
-    this.#connectionInProgress = true;
-    try {
-      const timeout = new Promise((_, r) =>
-        setTimeout(() => r(new Error("Wallet connection timed out.")), 60000)
+
+    // If UI is disabled, we need to temporarily show wallet connection UI
+    if (this.#disableUi) {
+      // Create temporary wallet connection UI
+      await this.#uiManager.showTemporaryWalletConnectionUI(
+        walletType,
+        async () => {
+          this.#connectionInProgress = false;
+          if (this.#walletConnectors[walletType]) {
+            try {
+              await this.#walletConnectors[walletType].disconnect();
+              if (this.#walletConnectors[walletType].killSession) {
+                await this.#walletConnectors[walletType].killSession();
+              }
+            } catch (error) {
+              console.error("Failed to disconnect wallet:", error);
+            }
+          }
+          eventBus.emit("wallet:connection:cancelled", { walletType });
+        }
       );
-      const accounts = await Promise.race([connector.connect(), timeout]);
-      if (!accounts || !accounts.length)
+    } else {
+      // Only manipulate DOM if UI is not disabled
+      document.getElementById("algox-sdk-container").style.display = "none";
+    }
+
+    const walletConnector = this.#walletConnectors[walletType];
+
+    this.#connectionInProgress = true;
+
+    try {
+      const connectPromise = walletConnector.connect();
+
+      // Set a timeout fallback (e.g., 60s) to detect "hanging" connections
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(
+          () => reject(new Error("Wallet connection timed out.")),
+          60 * 1000
+        )
+      );
+
+      const accounts = await Promise.race([connectPromise, timeoutPromise]);
+
+      if (!accounts || accounts.length === 0) {
         throw new Error("Wallet connection declined or no account returned.");
+      }
+
       this.#walletConnected = true;
       this.account = accounts[0];
       this.#connectionInfo = { address: this.account, walletType };
+
+      if (!this.#disableUi) {
+        this.#uiManager.showSDKUI();
+      } else {
+        // Hide the temporary wallet connection UI
+        this.#uiManager.hideTemporaryWalletConnectionUI();
+      }
       this.#uiManager.showToast(`Connected to ${walletType} wallet`, "success");
       this.events.emit("wallet:connected", {
         address: this.account,
         type: walletType,
       });
-      this.events.emit("wallet:connection:connected", {
-        address: this.account,
-      });
-      this.#uiManager.refreshUI(this.#walletConnected, this.account);
-    } catch (error) {
-      try {
-        await connector.disconnect();
-        if (connector.killSession) await connector.killSession();
-      } catch {}
-      this.#uiManager.showToast("Failed to connect wallet!", "error");
-      this.events.emit("wallet:connection:failed", { error: error.message });
-    } finally {
+      this.events.emit("wallet:connection:connected", { address: this.account });
       this.#connectionInProgress = false;
+    } catch (error) {
+      if (error.message === "Wallet connection timed out.") {
+        await walletConnector.disconnect();
+        if (walletConnector.killSession) {
+          await walletConnector.killSession(); // Extra hard-kill if supported
+        }
+        if (this.#disableUi) {
+          this.#uiManager.hideTemporaryWalletConnectionUI();
+        } else {
+          window.location.reload();
+        }
+      } else {
+        console.error("Failed to connect wallet!", error);
+        this.#connectionInProgress = false;
+
+        // Handle specific error cases
+        if (
+          error.message &&
+          error.message.includes("Session currently connected")
+        ) {
+          // Wallet is already connected, try to get the current session
+          try {
+            const accounts = await walletConnector.reconnectSession();
+            if (accounts && accounts.length > 0) {
+              // Successfully got the current session
+              this.#walletConnected = true;
+              this.account = accounts[0];
+              this.#selectedWalletType = walletType;
+              this.#connectionInfo = { address: this.account, walletType };
+
+              if (!this.#disableUi) {
+                this.#uiManager.showSDKUI();
+                this.#uiManager.updateWalletAddressBar();
+              } else {
+                this.#uiManager.hideTemporaryWalletConnectionUI();
+              }
+
+              this.#uiManager.showToast(
+                `Connected to existing ${walletType} session`,
+                "success"
+              );
+              this.events.emit("wallet:connected", {
+                address: this.account,
+                type: walletType,
+              });
+              this.events.emit("wallet:connection:connected", {
+                address: this.account,
+              });
+              return; // Exit successfully
+            }
+          } catch (reconnectError) {
+            console.error(
+              "Failed to reconnect to existing session:",
+              reconnectError
+            );
+          }
+        }
+
+        this.#uiManager.showToast("Failed to connect wallet!", "error");
+        this.events.emit("wallet:connection:failed", {
+          error: "Failed to connect wallet!",
+        });
+        if (this.#disableUi) {
+          this.#uiManager.hideTemporaryWalletConnectionUI();
+        } else {
+          this.#uiManager.resetToLoginUI();
+        }
+      }
     }
   }
 
@@ -350,14 +464,14 @@ class AlgoStakeX {
     this.account = null;
     this.#connectionInfo = null;
     this.#selectedWalletType = null;
-    this.#uiManager.refreshUI(this.#walletConnected, this.account);
+    this.#uiManager.resetToLoginUI();
     this.events.emit("wallet:disconnected", {});
     this.events.emit("wallet:connection:disconnected", { address: null });
   }
 
-  /**
-   *********** SDK public methods
-   */
+  // ==========================================
+  // COMMON SDK PUBLIC METHODS
+  // ==========================================
 
   /**
    * SDK UI Management
@@ -430,7 +544,7 @@ class AlgoStakeX {
       });
 
       if (!this.#disableUi) {
-        this.#uiManager.refreshUI(this.#walletConnected, this.account);
+        this.#uiManager.showSDKUI();
       }
 
       return true;
@@ -501,7 +615,7 @@ class AlgoStakeX {
       });
 
       if (!this.#disableUi) {
-        this.#uiManager.refreshUI(this.#walletConnected, this.account);
+        this.#uiManager.showSDKUI();
       }
 
       return {
@@ -550,7 +664,7 @@ class AlgoStakeX {
       eventBus.emit("wallet:disconnected", {});
 
       if (!this.#disableUi) {
-        this.#uiManager.refreshUI(this.#walletConnected, this.account);
+        this.#uiManager.resetToLoginUI();
       }
 
       return true;
@@ -559,6 +673,10 @@ class AlgoStakeX {
       return false;
     }
   }
+
+  // ==========================================
+  // SDK-SPECIFIC PUBLIC METHODS (ALGOSTAKEX)
+  // ==========================================
 
   /**
    * Staking Operations

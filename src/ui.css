@@ -1,5 +1,9 @@
-/* AlgoStakeX SDK Styles */
-#algostakex-sdk-container {
+/* ==========================================
+   ALGOXSUITE COMMON UI STYLES
+   ========================================== */
+
+/* SDK Container */
+#algox-sdk-container {
   position: fixed;
   top: 50%;
   left: 50%;
@@ -21,25 +25,26 @@
   transform-origin: center;
 }
 
-#algostakex-sdk-container.dark-theme {
+#algox-sdk-container.dark-theme {
   background-color: #1a1a1a;
   border-color: #333;
   color: #fff;
 }
 
-#algostakex-sdk-container.minimizing {
+#algox-sdk-container.minimizing {
   opacity: 0;
   visibility: hidden;
   transform: translate(-50%, -50%) scale(0.95);
 }
 
-#algostakex-sdk-container.maximizing {
+#algox-sdk-container.maximizing {
   opacity: 0;
   visibility: hidden;
   transform: translate(-50%, -50%) scale(0.95);
 }
 
-#algostakex-loading-overlay {
+/* Loading Overlay */
+#algox-loading-overlay {
   position: absolute;
   top: 45px;
   left: 0;
@@ -61,32 +66,32 @@
   border-bottom: 1px solid rgba(0, 0, 0, 0.1);
 }
 
-.dark-theme #algostakex-loading-overlay {
+.dark-theme #algox-loading-overlay {
   background: rgba(26, 26, 26, 0.7);
   border-top-color: rgba(255, 255, 255, 0.1);
   border-bottom-color: rgba(255, 255, 255, 0.1);
 }
 
-#algostakex-loading-overlay.visible {
+#algox-loading-overlay.visible {
   opacity: 1;
   visibility: visible;
 }
 
-#algostakex-loader {
+#algox-loader {
   width: 40px;
   height: 40px;
   border: 3px solid #f3f3f3;
   border-top: 3px solid #3498db;
   border-radius: 50%;
-  animation: algostakex-spin 1s linear infinite;
+  animation: algox-spin 1s linear infinite;
 }
 
-.dark-theme #algostakex-loader {
+.dark-theme #algox-loader {
   border-color: #2d2d2d;
   border-top-color: #3498db;
 }
 
-@keyframes algostakex-spin {
+@keyframes algox-spin {
   0% {
     transform: rotate(0deg);
   }
@@ -95,7 +100,20 @@
   }
 }
 
-#sdkMinimizedBtn {
+#algox-processing-message {
+  font-size: 0.9rem;
+  color: #333;
+  text-align: center;
+  padding: 0 20px;
+  line-height: 1.4;
+}
+
+.dark-theme #algox-processing-message {
+  color: #fff;
+}
+
+/* Minimized Button */
+#algox-minimized-btn {
   position: fixed;
   bottom: 20px;
   width: 50px;
@@ -109,35 +127,59 @@
   align-items: center;
   justify-content: center;
   font-size: 20px;
+  font-weight: 900;
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
   z-index: 9999998;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  opacity: 0;
+  transform: scale(0.8);
 }
 
-#sdkMinimizedBtn:hover {
+#algox-minimized-btn img {
+  width: 35px;
+  height: 35px;
+  object-fit: contain;
+}
+
+#algox-minimized-btn span {
+  font-size: 1.1rem;
+  line-height: 1;
+}
+
+#algox-minimized-btn:hover {
   transform: scale(1.1);
   background-color: #2980b9;
 }
 
-#sdkMinimizedBtn.dark-theme {
+#algox-minimized-btn.dark-theme {
   background-color: #2d2d2d;
   color: #fff;
 }
 
-#sdkMinimizedBtn.dark-theme:hover {
+#algox-minimized-btn.dark-theme:hover {
   background-color: #1a1a1a;
 }
 
-#sdkMinimizedBtn.left {
+#algox-minimized-btn.left {
   left: 20px;
 }
 
-#sdkMinimizedBtn.right {
+#algox-minimized-btn.right {
   right: 20px;
 }
 
-/* ASX UI Styles */
-#asx-header {
+#algox-minimized-btn.showing {
+  opacity: 1;
+  transform: scale(1);
+}
+
+#algox-minimized-btn.hiding {
+  opacity: 0;
+  transform: scale(0.8);
+}
+
+/* Header */
+#algox-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -146,58 +188,86 @@
   background-color: #f9fafb;
 }
 
-.dark-theme #asx-header {
+.dark-theme #algox-header {
   background-color: #1f2937;
   border-bottom-color: #374151;
 }
 
-#asx-header .header-left {
+#algox-header .header-left {
   display: flex;
   align-items: center;
   gap: 8px;
 }
 
-#asx-header .header-left img {
+#algox-header .header-left img {
   width: 28px;
   height: 28px;
   object-fit: contain;
 }
 
-#asx-header .header-left h3 {
+#algox-header .header-left h3 {
+  margin: 0;
   font-size: 14px;
   font-weight: 600;
   color: #111827;
 }
 
-.dark-theme #asx-header .header-left h3 {
+.dark-theme #algox-header .header-left h3 {
   color: #f9fafb;
 }
 
-#asx-header .header-right button {
+#algox-header .header-right {
+  display: flex;
+  gap: 4px;
+}
+
+#algox-header .header-right button {
   background: none;
   border: none;
   cursor: pointer;
   padding: 4px 8px;
   border-radius: 4px;
   transition: background-color 0.2s;
+  font-size: 1.25rem;
+  color: #111827;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-#asx-header .header-right button:hover {
+#algox-header .header-right button:hover {
   background-color: rgba(0, 0, 0, 0.08);
 }
 
-.dark-theme #asx-header .header-right button:hover {
+.dark-theme #algox-header .header-right button {
+  color: #f9fafb;
+}
+
+.dark-theme #algox-header .header-right button:hover {
   background-color: rgba(255, 255, 255, 0.1);
 }
 
-#asxWalletChoice {
+#algox-logout-btn {
+  transform: rotate(180deg);
+  transition: opacity 0.3s ease;
+}
+
+#algox-logout-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Wallet Selection Screen */
+#algox-wallet-choice {
   padding: 16px;
   display: flex;
   flex-direction: column;
   gap: 10px;
 }
 
-.walletBtn {
+.algox-wallet-btn {
   display: flex;
   align-items: center;
   gap: 10px;
@@ -208,35 +278,35 @@
   border-radius: 8px;
   cursor: pointer;
   transition: all 0.2s;
+  font-weight: 600;
+  color: #333;
 }
 
-.walletBtn:hover {
+.algox-wallet-btn:hover {
   background-color: #f9fafb;
   border-color: #3498db;
-}
-.walletBtn img {
-  width: 24px;
-  height: 24px;
+  transform: translateY(-2px);
 }
 
-.dark-theme .walletBtn {
+.algox-wallet-btn img {
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+}
+
+.dark-theme .algox-wallet-btn {
   background-color: #111827;
   border-color: #374151;
   color: #f9fafb;
 }
-.dark-theme .walletBtn:hover {
+
+.dark-theme .algox-wallet-btn:hover {
   background-color: #1f2937;
   border-color: #60a5fa;
 }
 
-#asxUI {
-  padding: 16px;
-  gap: 12px;
-  display: flex;
-  flex-direction: column;
-}
-
-#asxWalletAddressBar {
+/* Wallet Address Bar */
+#algox-wallet-address {
   font-size: 12px;
   color: #111827;
   background: #f3f4f6;
@@ -245,147 +315,53 @@
   padding: 8px 10px;
   word-break: break-all;
   cursor: pointer;
+  display: none;
 }
 
-.dark-theme #asxWalletAddressBar {
+.dark-theme #algox-wallet-address {
   color: #f9fafb;
   background: #1f2937;
   border-color: #374151;
 }
 
-#asxTabs {
-  display: flex;
-  gap: 6px;
-  border-bottom: 2px solid #e5e7eb;
-  padding-bottom: 8px;
-}
-.dark-theme #asxTabs {
-  border-bottom-color: #374151;
-}
-
-.asxTabBtn {
-  flex: 1;
-  padding: 10px;
-  border: none;
-  background: none;
-  cursor: pointer;
-  color: #6b7280;
-  border-bottom: 2px solid transparent;
-  font-size: 13px;
-  font-weight: 500;
-}
-.asxTabBtn:hover {
-  color: #111827;
-  background-color: #f9fafb;
-}
-.dark-theme .asxTabBtn {
-  color: #9ca3af;
-}
-.dark-theme .asxTabBtn:hover {
-  color: #f9fafb;
-  background: #1f2937;
+/* Footer */
+#algox-footer {
+  padding: 8px 15px;
+  font-size: 0.85rem;
+  text-align: center;
+  color: #666;
+  background-color: #f8f9fa;
+  border-top: 1px solid #ddd;
+  user-select: none;
 }
 
-.asxTabBtn.active {
+.dark-theme #algox-footer {
+  color: #999;
+  background-color: #2d2d2d;
+  border-top-color: #444;
+}
+
+#algox-footer a {
   color: #3498db;
-  border-bottom-color: #3498db;
-}
-.dark-theme .asxTabBtn.active {
-  color: #60a5fa;
-  border-bottom-color: #60a5fa;
+  text-decoration: none;
+  transition: color 0.2s ease;
 }
 
-.asxTabPane {
-  margin-top: 10px;
-}
-.asxRow {
-  display: flex;
-  gap: 8px;
-}
-.asxAssetList {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  max-height: 220px;
-  overflow-y: auto;
-}
-.asxAssetItem {
-  border: 1px solid #e5e7eb;
-  border-radius: 6px;
-  padding: 10px;
-  cursor: pointer;
-  transition: background 0.2s, border-color 0.2s;
-}
-.asxAssetItem:hover {
-  background: #f9fafb;
-}
-.asxAssetItem.selected {
-  border-color: #3498db;
-  background: #eef6fd;
-}
-.asxAssetRow {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-.asxAssetName {
-  font-weight: 600;
-}
-.asxAssetAmount {
-  color: #6b7280;
-  font-size: 12px;
-}
-.asxAssetLoading,
-.asxAssetEmpty,
-.asxAssetError {
-  color: #6b7280;
-  font-size: 13px;
-  padding: 8px;
-}
-.dark-theme .asxAssetItem {
-  border-color: #374151;
-}
-.dark-theme .asxAssetItem:hover {
-  background: #1f2937;
-}
-.dark-theme .asxAssetItem.selected {
-  background: #0b1f33;
-  border-color: #60a5fa;
-}
-.dark-theme .asxAssetAmount,
-.dark-theme .asxAssetLoading,
-.dark-theme .asxAssetEmpty,
-.dark-theme .asxAssetError {
-  color: #9ca3af;
-}
-.asxRow input,
-.asxRow select {
-  flex: 1;
-  padding: 10px;
-  border: 1px solid #d1d5db;
-  border-radius: 6px;
-  font-size: 13px;
-}
-.asxRow input:focus,
-.asxRow select:focus {
-  outline: none;
-  border-color: #3498db;
-  box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
-}
-.dark-theme .asxRow input,
-.dark-theme .asxRow select {
-  background: #111827;
-  border-color: #374151;
-  color: #f9fafb;
-}
-.dark-theme .asxRow input:focus,
-.dark-theme .asxRow select:focus {
-  border-color: #60a5fa;
-  box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.1);
+#algox-footer a:hover {
+  color: #2980b9;
+  text-decoration: underline;
 }
 
-/* Single toast element positioning */
-#algostakex-toast {
+.dark-theme #algox-footer a {
+  color: #5dade2;
+}
+
+.dark-theme #algox-footer a:hover {
+  color: #3498db;
+}
+
+/* Toast Notifications */
+#algox-toast {
   position: fixed;
   z-index: 10000002;
   opacity: 0;
@@ -398,30 +374,249 @@
   border-radius: 8px;
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
   padding: 10px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
 }
-#algostakex-toast.top-left {
+
+#algox-toast.top-left {
   top: 20px;
   left: 20px;
 }
-#algostakex-toast.top-right {
+
+#algox-toast.top-right {
   top: 20px;
   right: 20px;
 }
 
-.dark-theme #algostakex-toast {
+.dark-theme #algox-toast {
   background: #1f2937;
   color: #f9fafb;
   border-color: #374151;
 }
 
-#algostakex-toast .toast-content {
-  display: inline-block;
+#algox-toast .toast-content {
+  flex: 1;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  white-space: normal;
 }
-#algostakex-toast .toast-close {
-  float: right;
+
+#algox-toast .toast-close {
   background: none;
   border: none;
   color: inherit;
-  font-size: 16px;
+  opacity: 0.7;
   cursor: pointer;
+  padding: 0;
+  font-size: 16px;
+  line-height: 1;
+  transition: opacity 0.2s ease;
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+#algox-toast .toast-close:hover {
+  opacity: 1;
+}
+
+#algox-toast.success {
+  border-left: 4px solid #10b981;
+}
+
+#algox-toast.error {
+  border-left: 4px solid #ef4444;
+}
+
+#algox-toast.warning {
+  border-left: 4px solid #f59e0b;
+}
+
+#algox-toast.info {
+  border-left: 4px solid #3498db;
+}
+
+/* ==========================================
+   SDK-SPECIFIC STYLES (ALGOSTAKEX)
+   ========================================== */
+
+#algox-stakex-content {
+  padding: 16px;
+  gap: 12px;
+  display: none;
+  flex-direction: column;
+}
+
+#algox-stakex-tabs {
+  display: flex;
+  gap: 6px;
+  border-bottom: 2px solid #e5e7eb;
+  padding-bottom: 8px;
+}
+
+.dark-theme #algox-stakex-tabs {
+  border-bottom-color: #374151;
+}
+
+.algox-stakex-tab-btn {
+  flex: 1;
+  padding: 10px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: #6b7280;
+  border-bottom: 2px solid transparent;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.algox-stakex-tab-btn:hover {
+  color: #111827;
+  background-color: #f9fafb;
+}
+
+.dark-theme .algox-stakex-tab-btn {
+  color: #9ca3af;
+}
+
+.dark-theme .algox-stakex-tab-btn:hover {
+  color: #f9fafb;
+  background: #1f2937;
+}
+
+.algox-stakex-tab-btn.active {
+  color: #3498db;
+  border-bottom-color: #3498db;
+}
+
+.dark-theme .algox-stakex-tab-btn.active {
+  color: #60a5fa;
+  border-bottom-color: #60a5fa;
+}
+
+.algox-stakex-tab-pane {
+  margin-top: 10px;
+}
+
+.algox-stakex-row {
+  display: flex;
+  gap: 8px;
+}
+
+.algox-stakex-asset-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.algox-stakex-asset-item {
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  padding: 10px;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s;
+}
+
+.algox-stakex-asset-item:hover {
+  background: #f9fafb;
+}
+
+.algox-stakex-asset-item.selected {
+  border-color: #3498db;
+  background: #eef6fd;
+}
+
+.algox-stakex-asset-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.algox-stakex-asset-name {
+  font-weight: 600;
+}
+
+.algox-stakex-asset-amount {
+  color: #6b7280;
+  font-size: 12px;
+}
+
+.algox-stakex-asset-loading,
+.algox-stakex-asset-empty,
+.algox-stakex-asset-error {
+  color: #6b7280;
+  font-size: 13px;
+  padding: 8px;
+}
+
+.dark-theme .algox-stakex-asset-item {
+  border-color: #374151;
+}
+
+.dark-theme .algox-stakex-asset-item:hover {
+  background: #1f2937;
+}
+
+.dark-theme .algox-stakex-asset-item.selected {
+  background: #0b1f33;
+  border-color: #60a5fa;
+}
+
+.dark-theme .algox-stakex-asset-amount,
+.dark-theme .algox-stakex-asset-loading,
+.dark-theme .algox-stakex-asset-empty,
+.dark-theme .algox-stakex-asset-error {
+  color: #9ca3af;
+}
+
+.algox-stakex-row input,
+.algox-stakex-row select,
+.algox-stakex-row button {
+  flex: 1;
+  padding: 10px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 13px;
+}
+
+.algox-stakex-row input:focus,
+.algox-stakex-row select:focus {
+  outline: none;
+  border-color: #3498db;
+  box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+}
+
+.algox-stakex-row button {
+  background: #f8f9fa;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.algox-stakex-row button:hover {
+  background: #e5e7eb;
+}
+
+.dark-theme .algox-stakex-row input,
+.dark-theme .algox-stakex-row select,
+.dark-theme .algox-stakex-row button {
+  background: #111827;
+  border-color: #374151;
+  color: #f9fafb;
+}
+
+.dark-theme .algox-stakex-row input:focus,
+.dark-theme .algox-stakex-row select:focus {
+  border-color: #60a5fa;
+  box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.1);
+}
+
+.dark-theme .algox-stakex-row button:hover {
+  background: #1f2937;
 }
