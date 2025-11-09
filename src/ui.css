@@ -913,6 +913,34 @@
   color: #10b981 !important;
 }
 
+.algox-stakex-mystake-withdraw {
+  color: #10b981 !important;
+  font-weight: 700;
+  font-size: 14px !important;
+}
+
+.algox-stakex-mystake-withdraw.algox-stakex-mystake-penalty {
+  color: #ef4444 !important;
+}
+
+.dark-theme .algox-stakex-mystake-withdraw {
+  color: #10b981 !important;
+}
+
+.dark-theme .algox-stakex-mystake-withdraw.algox-stakex-mystake-penalty {
+  color: #f87171 !important;
+}
+
+.algox-stakex-mystake-penalty-amount {
+  color: #ef4444 !important;
+  font-weight: 700;
+  font-size: 13px !important;
+}
+
+.dark-theme .algox-stakex-mystake-penalty-amount {
+  color: #f87171 !important;
+}
+
 .algox-stakex-mystake-loading,
 .algox-stakex-mystake-empty,
 .algox-stakex-mystake-error {

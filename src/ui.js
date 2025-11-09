@@ -359,26 +359,32 @@ export class UIManager {
         return;
       }
 
-      // Optionally fetch metadata for display
+      // Fetch metadata for display and decimals
       let metaName = "";
+      let decimals = 0;
       try {
         const meta = await getMetadata(targetId);
         metaName = meta?.name || "";
+        decimals = meta?.decimals || 0;
       } catch {}
 
       const itemsHtml = filtered
         .map(
-          (a) => `
+          (a) => {
+            // Convert amount to human-readable format using decimals
+            const displayAmount = (a.amount / Math.pow(10, decimals)).toFixed(decimals);
+            return `
         <div class="algox-stakex-asset-item" data-asset-id="${
           a.assetId
-        }" data-amount="${a.amount}">
+        }" data-amount="${a.amount}" data-decimals="${decimals}">
           <div class="algox-stakex-asset-row">
             <div class="algox-stakex-asset-name">${
               metaName || "ASA " + a.assetId
             }</div>
-            <div class="algox-stakex-asset-amount">Amount: ${a.amount}</div>
+            <div class="algox-stakex-asset-amount">Amount: ${displayAmount}</div>
           </div>
-        </div>`
+        </div>`;
+          }
         )
         .join("");
 
@@ -387,22 +393,37 @@ export class UIManager {
       // Selection handler
       document.querySelectorAll(".algox-stakex-asset-item").forEach((el) => {
         el.addEventListener("click", () => {
-          document
-            .querySelectorAll(".algox-stakex-asset-item")
-            .forEach((e2) => e2.classList.remove("selected"));
-          el.classList.add("selected");
-
-          // Enable stake button and input, set input value to asset amount
-          const amount = el.getAttribute("data-amount");
+          const wasSelected = el.classList.contains("selected");
           const stakeBtn = document.getElementById("algox-stakex-stake-btn");
           const amountInput = document.getElementById(
             "algox-stakex-amount-input"
           );
-          if (stakeBtn) stakeBtn.disabled = false;
-          if (amountInput) {
-            amountInput.disabled = false;
-            amountInput.value = amount;
-            amountInput.max = amount;
+          
+          // Deselect all
+          document
+            .querySelectorAll(".algox-stakex-asset-item")
+            .forEach((e2) => e2.classList.remove("selected"));
+          
+          // If clicking the same item, deselect it
+          if (wasSelected) {
+            if (amountInput) {
+              amountInput.value = "";
+              amountInput.disabled = true;
+            }
+            if (stakeBtn) stakeBtn.disabled = true;
+          } else {
+            // Select the new item
+            el.classList.add("selected");
+            
+            if (amountInput) {
+              amountInput.disabled = false;
+              amountInput.value = "";
+              amountInput.placeholder = "Enter amount";
+              // Prevent negative values
+              amountInput.min = "0";
+              amountInput.step = "any";
+            }
+            if (stakeBtn) stakeBtn.disabled = false;
           }
         });
       });
@@ -763,7 +784,7 @@ export class UIManager {
   /**
    * Render My Staking tab with detailed staking info
    */
-  async renderMyStaking(walletConnected, account, getStakingStatus, poolId) {
+  async renderMyStaking(walletConnected, account, getStakingStatus, poolId, getMetadata, stakingConfig) {
     try {
       const summary = document.getElementById("algox-stakex-mystake-summary");
       const withdrawBtn = document.getElementById("algox-stakex-withdraw-btn");
@@ -791,6 +812,13 @@ export class UIManager {
       }
 
       const data = status.stakeData;
+      
+      // Fetch asset metadata to get decimals
+      let decimals = 0;
+      try {
+        const meta = await getMetadata(data.tokenId);
+        decimals = meta?.decimals || 0;
+      } catch {}
       const currentTime = Math.floor(Date.now() / 1000);
       const isLockExpired = currentTime >= data.lockEndTime;
       const remainingSeconds = Math.max(0, data.lockEndTime - currentTime);
@@ -819,6 +847,30 @@ export class UIManager {
 
       // Calculate total amount (principal + profit) when completed
       const totalAmount = data.amount + currentReward;
+      
+      // Calculate current withdraw amount (with penalty if applicable)
+      let currentWithdrawAmount = data.amount + currentReward;
+      let penaltyAmount = 0;
+      let hasPenalty = false;
+      
+      // For flexible staking or if lock is expired, no penalty
+      if (data.isFlexible || isLockExpired) {
+        hasPenalty = false;
+      } else {
+        // For locked staking before expiry, apply penalty
+        hasPenalty = true;
+        const penaltyPercent = stakingConfig?.withdraw_penalty || 5;
+        penaltyAmount = Math.floor((data.amount * penaltyPercent) / 100);
+        currentWithdrawAmount = data.amount - penaltyAmount + currentReward;
+      }
+      
+      // Convert amounts to human-readable format using decimals
+      const displayAmount = (data.amount / Math.pow(10, decimals)).toFixed(decimals);
+      const displayCurrentReward = (currentReward / Math.pow(10, decimals)).toFixed(decimals);
+      const displayTotalRewardsClaimed = (data.totalRewardsClaimed / Math.pow(10, decimals)).toFixed(decimals);
+      const displayTotalAmount = (totalAmount / Math.pow(10, decimals)).toFixed(decimals);
+      const displayCurrentWithdrawAmount = (currentWithdrawAmount / Math.pow(10, decimals)).toFixed(decimals);
+      const displayPenaltyAmount = (penaltyAmount / Math.pow(10, decimals)).toFixed(decimals);
 
       const infoHtml = `
         <div class="algox-stakex-mystake-info">
@@ -834,7 +886,7 @@ export class UIManager {
           </div>
           <div class="algox-stakex-mystake-item">
             <span class="algox-stakex-mystake-label">Staking Amount</span>
-            <span class="algox-stakex-mystake-value">${data.amount}</span>
+            <span class="algox-stakex-mystake-value">${displayAmount}</span>
           </div>
           <div class="algox-stakex-mystake-item">
             <span class="algox-stakex-mystake-label">Lock Period</span>
@@ -889,23 +941,35 @@ export class UIManager {
               ? `
           <div class="algox-stakex-mystake-item">
             <span class="algox-stakex-mystake-label">Current Reward</span>
-            <span class="algox-stakex-mystake-value algox-stakex-mystake-reward">💰 ${currentReward}</span>
+            <span class="algox-stakex-mystake-value algox-stakex-mystake-reward">💰 ${displayCurrentReward}</span>
           </div>
           `
               : ""
           }
           <div class="algox-stakex-mystake-item">
             <span class="algox-stakex-mystake-label">Rewards Claimed</span>
-            <span class="algox-stakex-mystake-value">${
-              data.totalRewardsClaimed
-            }</span>
+            <span class="algox-stakex-mystake-value">${displayTotalRewardsClaimed}</span>
           </div>
+          <div class="algox-stakex-mystake-item full-width">
+            <span class="algox-stakex-mystake-label">💵 Current Withdraw Amount</span>
+            <span class="algox-stakex-mystake-value algox-stakex-mystake-withdraw ${hasPenalty ? 'algox-stakex-mystake-penalty' : ''}">${displayCurrentWithdrawAmount}</span>
+          </div>
+          ${
+            hasPenalty
+              ? `
+          <div class="algox-stakex-mystake-item full-width">
+            <span class="algox-stakex-mystake-label">⚠️ Early Withdrawal Penalty (${stakingConfig?.withdraw_penalty || 5}%)</span>
+            <span class="algox-stakex-mystake-value algox-stakex-mystake-penalty-amount">-${displayPenaltyAmount}</span>
+          </div>
+          `
+              : ""
+          }
           ${
             isLockExpired && data.rewardType === "APY"
               ? `
           <div class="algox-stakex-mystake-item full-width">
             <span class="algox-stakex-mystake-label">💎 Total Amount (Principal + Profit)</span>
-            <span class="algox-stakex-mystake-value algox-stakex-mystake-total">${totalAmount}</span>
+            <span class="algox-stakex-mystake-value algox-stakex-mystake-total">${displayTotalAmount}</span>
           </div>
           `
               : ""

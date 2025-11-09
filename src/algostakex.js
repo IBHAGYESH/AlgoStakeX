@@ -210,7 +210,9 @@ class AlgoStakeX {
             this.#walletConnected,
             this.account,
             (poolId) => this.stackingStatus(poolId),
-            this.#namespace
+            this.#namespace,
+            (tokenId) => this.getFTMetadata(tokenId),
+            this.#stakingConfig
           )
           .catch(() =>
             this.#uiManager.showToast("Failed to load staking info", "error")
@@ -228,13 +230,18 @@ class AlgoStakeX {
           const amountInput = document.getElementById(
             "algox-stakex-amount-input"
           );
-          const amount = Number(amountInput?.value) || 0;
-          if (!amount || amount <= 0) {
+          const userAmount = Number(amountInput?.value) || 0;
+          if (!userAmount || userAmount <= 0) {
             this.#uiManager.showToast("Invalid amount", "error");
             return;
           }
+          
+          // Get decimals from selected asset and convert to raw amount
+          const decimals = Number(selected.getAttribute("data-decimals")) || 0;
+          const rawAmount = Math.floor(userAmount * Math.pow(10, decimals));
+          
           this.#uiManager.showLoadingOverlay("Staking...");
-          await this.stack({ poolId: this.#namespace, amount });
+          await this.stack({ poolId: this.#namespace, amount: rawAmount });
           this.#uiManager.showToast("Staking successful!", "success");
           
           // Wait a moment for blockchain confirmation, then refresh UI
@@ -1253,7 +1260,7 @@ class AlgoStakeX {
         .map((asset) => {
           return {
             assetId: asset.assetId,
-            amount: asset.amount,
+            amount: Number(asset.amount),
             isFrozen: asset.isFrozen || false,
           };
         });
