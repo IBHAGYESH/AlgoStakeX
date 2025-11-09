@@ -157,10 +157,6 @@ export function decodeStakeData(boxValueBytes) {
     const utilityOffset = view.getUint16(offset, false);
     offset += 2;
     
-    // totalRewardsClaimed (8 bytes)
-    const totalRewardsClaimed = view.getBigUint64(offset, false);
-    offset += 8;
-    
     // Decode dynamic fields using their offsets
     let rewardTypeLength = view.getUint16(rewardTypeOffset, false);
     let rewardTypeBytes = boxValueBytes.slice(
@@ -187,7 +183,6 @@ export function decodeStakeData(boxValueBytes) {
       rewardType: rewardType,
       rewardRate: Number(rewardRate),
       utility: utility,
-      totalRewardsClaimed: Number(totalRewardsClaimed),
     };
   } catch (error) {
     console.error("Error decoding stake data:", error);

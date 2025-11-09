@@ -105,11 +105,11 @@ class AlgoStakeX {
       );
 
       this.#contractApplicationId =
-        this.#network === "mainnet" ? 749347292 : 749347292;
+        this.#network === "mainnet" ? 749392746 : 749392746;
       this.#contractWalletAddress =
         this.#network === "mainnet"
-          ? "55AV6JY3QZJ7CKLQHMZABP2YND6GLGR53J34FFEKKAS5UWUVDWZBKVJY6U"
-          : "55AV6JY3QZJ7CKLQHMZABP2YND6GLGR53J34FFEKKAS5UWUVDWZBKVJY6U";
+          ? "MSPVUMLFRWNMH64A344GKM4SSJC5QZGCVW2W3RK6ZVNACH2CK6SUNPUJE4"
+          : "MSPVUMLFRWNMH64A344GKM4SSJC5QZGCVW2W3RK6ZVNACH2CK6SUNPUJE4";
 
       // Initialize SDK variables
       this.#indexerUrl =
@@ -235,15 +235,15 @@ class AlgoStakeX {
             this.#uiManager.showToast("Invalid amount", "error");
             return;
           }
-          
+
           // Get decimals from selected asset and convert to raw amount
           const decimals = Number(selected.getAttribute("data-decimals")) || 0;
           const rawAmount = Math.floor(userAmount * Math.pow(10, decimals));
-          
+
           this.#uiManager.showLoadingOverlay("Staking...");
           await this.stack({ poolId: this.#namespace, amount: rawAmount });
           this.#uiManager.showToast("Staking successful!", "success");
-          
+
           // Wait a moment for blockchain confirmation, then refresh UI
           setTimeout(async () => {
             // Reload wallet assets to show updated balance
@@ -254,7 +254,7 @@ class AlgoStakeX {
               (tokenId) => this.getFTMetadata(tokenId),
               this.#tokenId
             );
-            
+
             // Reset the staking form
             this.#uiManager.resetStakingTab();
           }, 1500);
@@ -290,12 +290,12 @@ class AlgoStakeX {
             await this.withdraw(this.#namespace);
             this.#uiManager.showToast("Withdraw successful!", "success");
           }
-          
+
           // Wait a moment for blockchain confirmation, then refresh UI
           setTimeout(async () => {
             // Reset My Staking UI
             this.#uiManager.resetMyStakingTab();
-            
+
             // Reload wallet assets in Stake tab to show updated balance
             await this.#uiManager.renderWalletAssets(
               this.#walletConnected,
@@ -851,26 +851,76 @@ class AlgoStakeX {
   }
 
   /**
+   * Helper Methods
+   */
+
+  /**
+   * Determine which tier applies based on staked amount
+   * Compares using token units (human-readable), not raw base units
+   * @param {number} amountRaw - The staked amount in raw base units
+   * @returns {Promise<Object>} Tier information including reward type and value
+   */
+  async #getTierForAmount(amountRaw) {
+    const config = this.#stakingConfig;
+
+    if (!config.reward.isTiered) {
+      // Simple reward system
+      return {
+        rewardType: config.reward.type,
+        rewardValue: config.reward.value,
+        tierName: null,
+        tierIndex: -1,
+        nextTier: null,
+      };
+    }
+
+    // Tiered reward system
+    const tiers = config.reward.value;
+    let selectedTier = null;
+    let selectedIndex = -1;
+
+    // Convert raw amount to token units using decimals
+    let decimals = 0;
+    try {
+      const meta = await this.getFTMetadata(this.#tokenId);
+      decimals = meta?.decimals || 0;
+    } catch {}
+    const amountTokens = amountRaw / Math.pow(10, decimals);
+
+    // Find the highest tier that the amount (in tokens) qualifies for
+    for (let i = 0; i < tiers.length; i++) {
+      if (amountTokens >= tiers[i].stake_amount) {
+        selectedTier = tiers[i];
+        selectedIndex = i;
+      } else {
+        break; // Tiers are sorted, so we can stop
+      }
+    }
+
+    if (!selectedTier) {
+      throw new Error(
+        `Staked amount does not meet minimum tier requirement of ${tiers[0].stake_amount}`
+      );
+    }
+
+    return {
+      rewardType: config.reward.type,
+      rewardValue: selectedTier.value,
+      tierName: selectedTier.name,
+      tierIndex: selectedIndex,
+      nextTier: tiers[selectedIndex + 1] || null,
+      currentTier: selectedTier,
+    };
+  }
+
+  /**
    * Staking Operations
    */
 
   async stack({
     poolId = this.#namespace,
     amount,
-    lockPeriod = this.#stakingConfig.stake_period
-      ? this.#stakingConfig.stake_period
-      : null,
-    rewardType = this.#stakingConfig.reward.type,
-    rewardRate = this.#stakingConfig.reward.type === "APY"
-      ? this.#stakingConfig.reward?.value?.value
-        ? this.#stakingConfig.reward.value.value
-        : this.#stakingConfig.reward.value
-      : 0,
-    utility = this.#stakingConfig.reward.type === "UTILITY"
-      ? this.#stakingConfig.reward?.value?.value
-        ? this.#stakingConfig.reward.value.value
-        : this.#stakingConfig.reward.value
-      : "",
+    lockPeriod = this.#stakingConfig.stake_period,
   }) {
     try {
       if (!this.sdkEnabled) {
@@ -887,35 +937,29 @@ class AlgoStakeX {
         throw new Error("Amount must be greater than 0");
       }
 
-      // Use config defaults if not provided
+      // Determine tier and rewards based on staked amount (convert using decimals)
+      const tierInfo = await this.#getTierForAmount(amount);
+
+      // Use config defaults
       const isFlexible = this.#stakingConfig.type === "FLEXIBLE";
-      let finalLockPeriod =
-        lockPeriod !== null
-          ? lockPeriod
-          : this.#stakingConfig.stake_period || 0;
+      let finalLockPeriod = lockPeriod || this.#stakingConfig.stake_period;
 
       // Convert lock period from minutes to seconds
       // Config expects minutes, smart contract expects seconds
       finalLockPeriod = finalLockPeriod * 60;
 
-      const finalRewardType = rewardType || this.#stakingConfig.reward.type;
-      let defaultRate = 0;
-      let defaultUtility = "";
-      if (this.#stakingConfig.reward) {
-        const cfg = this.#stakingConfig.reward;
-        if (cfg.type === "APY") {
-          if (typeof cfg.value === "number") defaultRate = cfg.value;
-        } else if (cfg.type === "UTILITY") {
-          if (typeof cfg.value === "string") defaultUtility = cfg.value;
-        }
-      }
-      let finalRewardRate = rewardRate || defaultRate || 0;
-      const finalUtility = utility || defaultUtility || "";
+      const finalRewardType = tierInfo.rewardType;
+      let finalRewardRate = 0;
+      let finalUtility = "";
 
-      // Convert APY percentage to basis points (5% = 500 basis points)
-      // Smart contract expects basis points where 10000 = 100%
-      if (finalRewardType === "APY" && finalRewardRate > 0) {
+      if (finalRewardType === "APY") {
+        finalRewardRate = tierInfo.rewardValue;
+        // Convert APY percentage to basis points (5% = 500 basis points)
+        // Smart contract expects basis points where 10000 = 100%
         finalRewardRate = Math.floor(finalRewardRate * 100);
+      } else {
+        // UTILITY type
+        finalUtility = tierInfo.rewardValue;
       }
 
       // Validate reward type and rate

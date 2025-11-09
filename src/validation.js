@@ -115,102 +115,137 @@ export class Validator {
       "FIXED",
     ]);
 
-    const config = {
-      type,
-      stake_period: undefined,
-      withdraw_penalty: undefined,
-      reward: {
-        type: undefined,
-        value: undefined,
-      },
-    };
-
-    // Validate stake_period (optional for FLEXIBLE)
-    if (staking.stake_period !== undefined) {
-      config.stake_period = Validator.validateNumber(
-        staking.stake_period,
-        "Stake period",
-        { min: 0 }
-      );
+    // MANDATORY: stake_period
+    if (staking.stake_period === undefined || staking.stake_period === null) {
+      throw new Error("stake_period is mandatory");
     }
+    const stake_period = Validator.validateNumber(
+      staking.stake_period,
+      "Stake period",
+      { min: 1 }
+    );
 
-    // Validate withdraw_penalty (optional for FLEXIBLE)
-    if (staking.withdraw_penalty !== undefined) {
-      config.withdraw_penalty = Validator.validateNumber(
+    // STRICT: withdraw_penalty rules
+    let withdraw_penalty;
+    if (type === "FLEXIBLE") {
+      if (staking.withdraw_penalty !== undefined && staking.withdraw_penalty !== 0) {
+        throw new Error("withdraw_penalty must be 0 for FLEXIBLE staking");
+      }
+      withdraw_penalty = 0;
+    } else {
+      // FIXED
+      if (staking.withdraw_penalty === undefined || staking.withdraw_penalty === null) {
+        throw new Error("withdraw_penalty is required for FIXED staking");
+      }
+      withdraw_penalty = Validator.validateNumber(
         staking.withdraw_penalty,
         "Withdraw penalty",
         { min: 0, max: 100 }
       );
     }
 
-    // Validate reward configuration
+    // STRICT: Reward validation
     if (!staking.reward || typeof staking.reward !== "object") {
       throw new Error("Reward configuration is required");
     }
 
-    config.reward.type = Validator.validateEnum(
+    const rewardType = Validator.validateEnum(
       staking.reward.type,
       "Reward type",
       ["APY", "UTILITY"]
     );
 
-    // Validate reward.value: can be a primitive or an array of tiers
-    if (staking.reward.value !== undefined) {
-      if (Array.isArray(staking.reward.value)) {
-        config.reward.value = staking.reward.value.map((tier, index) => {
-          if (!tier || typeof tier !== "object") {
-            throw new Error(`Tier ${index}: must be an object`);
-          }
-          if (!tier.name || typeof tier.name !== "string") {
-            throw new Error(
-              `Tier ${index}: name is required and must be a string`
-            );
-          }
-          const stakeAmount = Validator.validateNumber(
+    if (staking.reward.value === undefined || staking.reward.value === null) {
+      throw new Error("reward.value is required");
+    }
+
+    let rewardValue;
+    const isTiered = Array.isArray(staking.reward.value);
+
+    if (isTiered) {
+      // Validate tiered rewards
+      if (staking.reward.value.length === 0) {
+        throw new Error("Tiered rewards must have at least one tier");
+      }
+
+      rewardValue = staking.reward.value.map((tier, index) => {
+        if (!tier || typeof tier !== "object") {
+          throw new Error(`Tier ${index}: must be an object`);
+        }
+
+        // Validate required fields
+        if (!tier.name || typeof tier.name !== "string") {
+          throw new Error(`Tier ${index}: name is required and must be a string`);
+        }
+        if (tier.stake_amount === undefined || tier.stake_amount === null) {
+          throw new Error(`Tier ${index}: stake_amount is required`);
+        }
+        if (tier.value === undefined || tier.value === null) {
+          throw new Error(`Tier ${index}: value is required`);
+        }
+
+        const validated = {
+          name: tier.name.trim(),
+          stake_amount: Validator.validateNumber(
             tier.stake_amount,
-            `Tier ${index}: stake_amount`,
+            `Tier ${index} stake_amount`,
             { min: 0 }
-          );
-          if (config.reward.type === "APY") {
-            const valueNum = Validator.validateNumber(
-              tier.value,
-              `Tier ${index}: value (APY)`,
-              { min: 0 }
-            );
-            return {
-              name: tier.name,
-              stake_amount: stakeAmount,
-              value: valueNum,
-            };
-          } else {
-            const valueStr = Validator.validateString(
-              tier.value,
-              `Tier ${index}: value (Utility)`
-            );
-            return {
-              name: tier.name,
-              stake_amount: stakeAmount,
-              value: valueStr,
-            };
-          }
-        });
-      } else {
-        if (config.reward.type === "APY") {
-          config.reward.value = Validator.validateNumber(
-            staking.reward.value,
-            "Reward value (APY)",
+          ),
+        };
+
+        if (rewardType === "APY") {
+          validated.value = Validator.validateNumber(
+            tier.value,
+            `Tier ${index} value (APY)`,
             { min: 0 }
           );
         } else {
-          config.reward.value = Validator.validateString(
-            staking.reward.value,
-            "Reward value (Utility)"
+          validated.value = Validator.validateString(
+            tier.value,
+            `Tier ${index} value (Utility)`
+          );
+        }
+
+        return validated;
+      });
+
+      // Sort tiers by stake_amount (ascending)
+      rewardValue.sort((a, b) => a.stake_amount - b.stake_amount);
+
+      // Validate no duplicate stake amounts
+      for (let i = 1; i < rewardValue.length; i++) {
+        if (rewardValue[i].stake_amount === rewardValue[i - 1].stake_amount) {
+          throw new Error(
+            `Duplicate stake_amount ${rewardValue[i].stake_amount} found in tiers`
           );
         }
       }
+    } else {
+      // Simple reward
+      if (rewardType === "APY") {
+        rewardValue = Validator.validateNumber(
+          staking.reward.value,
+          "Reward value (APY)",
+          { min: 0 }
+        );
+      } else {
+        rewardValue = Validator.validateString(
+          staking.reward.value,
+          "Reward value (Utility)"
+        );
+      }
     }
 
-    return config;
+    return {
+      type,
+      stake_period,
+      withdraw_penalty,
+      reward: {
+        type: rewardType,
+        value: rewardValue,
+        isTiered,
+      },
+    };
   }
 
   static validateDisableToast(disableToast) {

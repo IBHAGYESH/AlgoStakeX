@@ -864,10 +864,50 @@ export class UIManager {
         currentWithdrawAmount = data.amount - penaltyAmount + currentReward;
       }
       
+      // Determine tier information if tiered rewards (compare using token units)
+      let tierInfo = null;
+      if (stakingConfig.reward.isTiered) {
+        const tiers = stakingConfig.reward.value;
+        let selectedTier = null;
+        let selectedIndex = -1;
+
+        // Convert current staked amount to token units using decimals
+        const currentAmountTokens = data.amount / Math.pow(10, decimals);
+
+        for (let i = 0; i < tiers.length; i++) {
+          if (currentAmountTokens >= tiers[i].stake_amount) {
+            selectedTier = tiers[i];
+            selectedIndex = i;
+          } else {
+            break;
+          }
+        }
+
+        if (selectedTier) {
+          const next = tiers[selectedIndex + 1] || null;
+          const amountNeeded = next ? Math.max(0, next.stake_amount - currentAmountTokens) : 0;
+          tierInfo = {
+            name: selectedTier.name,
+            index: selectedIndex,
+            nextTier: next,
+            amountNeeded,
+          };
+        } else {
+          // Not meeting the first tier yet; show progress to the first tier
+          const next = tiers[0];
+          const amountNeeded = Math.max(0, next.stake_amount - currentAmountTokens);
+          tierInfo = {
+            name: "No tier",
+            index: -1,
+            nextTier: next,
+            amountNeeded,
+          };
+        }
+      }
+      
       // Convert amounts to human-readable format using decimals
       const displayAmount = (data.amount / Math.pow(10, decimals)).toFixed(decimals);
       const displayCurrentReward = (currentReward / Math.pow(10, decimals)).toFixed(decimals);
-      const displayTotalRewardsClaimed = (data.totalRewardsClaimed / Math.pow(10, decimals)).toFixed(decimals);
       const displayTotalAmount = (totalAmount / Math.pow(10, decimals)).toFixed(decimals);
       const displayCurrentWithdrawAmount = (currentWithdrawAmount / Math.pow(10, decimals)).toFixed(decimals);
       const displayPenaltyAmount = (penaltyAmount / Math.pow(10, decimals)).toFixed(decimals);
@@ -937,6 +977,33 @@ export class UIManager {
               : ""
           }
           ${
+            stakingConfig.reward.isTiered && tierInfo
+              ? `
+          <div class="algox-stakex-mystake-item">
+            <span class="algox-stakex-mystake-label">🏆 Current Tier</span>
+            <span class="algox-stakex-mystake-value algox-stakex-mystake-tier">${tierInfo.name}</span>
+          </div>
+          ${
+            tierInfo.nextTier
+              ? `
+          <div class="algox-stakex-mystake-item">
+            <span class="algox-stakex-mystake-label">📈 Next Tier</span>
+            <span class="algox-stakex-mystake-value">
+              ${tierInfo.nextTier.name} (need ${tierInfo.amountNeeded.toFixed(decimals)} more)
+            </span>
+          </div>
+          `
+              : `
+          <div class="algox-stakex-mystake-item">
+            <span class="algox-stakex-mystake-label">✨ Status</span>
+            <span class="algox-stakex-mystake-value algox-stakex-mystake-completed">Highest Tier Achieved!</span>
+          </div>
+          `
+          }
+          `
+              : ""
+          }
+          ${
             data.rewardType === "APY"
               ? `
           <div class="algox-stakex-mystake-item">
@@ -947,8 +1014,8 @@ export class UIManager {
               : ""
           }
           <div class="algox-stakex-mystake-item">
-            <span class="algox-stakex-mystake-label">Rewards Claimed</span>
-            <span class="algox-stakex-mystake-value">${displayTotalRewardsClaimed}</span>
+            <span class="algox-stakex-mystake-label">Penalty Amount</span>
+            <span class="algox-stakex-mystake-value ${hasPenalty ? 'algox-stakex-mystake-penalty-amount' : ''}">${hasPenalty ? `-${displayPenaltyAmount}` : '0'}</span>
           </div>
           <div class="algox-stakex-mystake-item full-width">
             <span class="algox-stakex-mystake-label">💵 Current Withdraw Amount</span>

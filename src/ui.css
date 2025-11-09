@@ -941,6 +941,16 @@
   color: #f87171 !important;
 }
 
+.algox-stakex-mystake-tier {
+  color: #f59e0b !important;
+  font-weight: 700;
+  font-size: 14px !important;
+}
+
+.dark-theme .algox-stakex-mystake-tier {
+  color: #fbbf24 !important;
+}
+
 .algox-stakex-mystake-loading,
 .algox-stakex-mystake-empty,
 .algox-stakex-mystake-error {
