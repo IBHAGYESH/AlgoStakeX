@@ -4,7 +4,7 @@
 window.algoStakeXClient = new window.AlgoStakeX({
   env: "testnet", // testnet | mainnet
   namespace: "STAKX", // unique namespace
-  token_id: 31566704, // ASA ID - replace with actual token ID
+  token_id: 749347951, // ASA ID - replace with actual token ID
   enable_ui: true,
   disableToast: false,
   toastLocation: "TOP_RIGHT", // TOP_LEFT | TOP_RIGHT
@@ -12,43 +12,35 @@ window.algoStakeXClient = new window.AlgoStakeX({
   logo: "./logo.png", // your website logo (URL / path to image)
   staking: {
     type: "FLEXIBLE", // FLEXIBLE | FIXED
-    stake_period: 1440, // optional for FLEXIBLE (in minutes)
+    stake_period: 1440, // optional for FLEXIBLE (in minutes) [24 hours]
     withdraw_penalty: 5, // optional for FLEXIBLE (percentage)
     reward: {
       type: "APY", // APY | UTILITY
-      value_type1: 5, // 5% APY or "feature 1,2" for UTILITY
-      value_type2: [
-        {
-          name: "Bronze",
-          stake_amount: 100,
-          value: 5, // 5% APY or "feature 1,2" for UTILITY
-        },
-        {
-          name: "Silver",
-          stake_amount: 1000,
-          value: 10, // 10% APY or "feature 1,2,3" for UTILITY
-        },
-        {
-          name: "Gold",
-          stake_amount: 10000,
-          value: 20, // 20% APY or "feature 1,2,3,4,5" for UTILITY
-        },
-      ],
+      value: 5, // 5% APY or "feature 1,2" for UTILITY
     },
   },
 });
+
+const TREASURY_MNEMONIC = "";
 
 /**
  * SDK events
  */
 
-algoStakeXClient.events.on("wallet:connected", async ({ address }) => {
-  console.log("Wallet connected:", address);
-  updateProfileSection(address);
-  await loadStakingInfo();
-  await loadWalletTokens();
-  showStakingSection();
-});
+algoStakeXClient.events.on(
+  "wallet:connection:connected",
+  async ({ address }) => {
+    console.log("wallet:connection:connected:", address);
+    updateProfileSection(address);
+    // await loadStakingInfo();
+    // await loadWalletTokens();
+    showStakingSection();
+    window.algoStakeXClient.addTreasuryWallet(
+      "YUF5JD4S6T764QQMHYUKZYN2BEWFZMHPPIHHSRXHW64TI3IQHEDVBIUUHQ",
+      TREASURY_MNEMONIC
+    );
+  }
+);
 
 algoStakeXClient.events.on("wallet:disconnected", async () => {
   console.log("Wallet disconnected");
@@ -58,7 +50,6 @@ algoStakeXClient.events.on("wallet:disconnected", async () => {
 
 algoStakeXClient.events.on("wallet:connection:failed", async ({ error }) => {
   console.log("wallet:connection:failed:", error);
-  alert("Failed to connect wallet: " + error);
 });
 
 algoStakeXClient.events.on("window:size:minimized", async ({ minimized }) => {
@@ -77,52 +68,44 @@ algoStakeXClient.events.on("sdk:processing:stopped", async ({ processing }) => {
 
 algoStakeXClient.events.on("stake:success", async ({ transactionId }) => {
   console.log("stake:success:", transactionId);
-  alert("Staking successful! Transaction ID: " + transactionId);
-  await loadStakingInfo();
-  await loadWalletTokens();
+  // await loadStakingInfo();
+  // await loadWalletTokens();
   closeStakeModal();
 });
 
 algoStakeXClient.events.on("stake:failed", async ({ error }) => {
   console.log("stake:failed:", error);
-  alert("Staking failed: " + error);
 });
 
 algoStakeXClient.events.on("withdraw:success", async ({ transactionId }) => {
   console.log("withdraw:success:", transactionId);
-  alert("Withdrawal successful! Transaction ID: " + transactionId);
-  await loadStakingInfo();
-  await loadWalletTokens();
+  // await loadStakingInfo();
+  // await loadWalletTokens();
 });
 
 algoStakeXClient.events.on("withdraw:failed", async ({ error }) => {
   console.log("withdraw:failed:", error);
-  alert("Withdrawal failed: " + error);
 });
 
 algoStakeXClient.events.on(
   "emergencyWithdraw:success",
   async ({ transactionId }) => {
     console.log("emergencyWithdraw:success:", transactionId);
-    alert("Emergency withdrawal successful! Transaction ID: " + transactionId);
-    await loadStakingInfo();
-    await loadWalletTokens();
+    // await loadStakingInfo();
+    // await loadWalletTokens();
   }
 );
 
 algoStakeXClient.events.on("emergencyWithdraw:failed", async ({ error }) => {
   console.log("emergencyWithdraw:failed:", error);
-  alert("Emergency withdrawal failed: " + error);
 });
 
 algoStakeXClient.events.on("treasury:added", async ({ address }) => {
   console.log("Treasury wallet added:", address);
-  alert("Treasury wallet configured successfully!");
 });
 
 algoStakeXClient.events.on("treasury:add:failed", async ({ error }) => {
   console.log("treasury:add:failed:", error);
-  alert("Failed to add treasury wallet: " + error);
 });
 
 /**
@@ -156,7 +139,6 @@ async function connectWallet() {
     }
   } catch (error) {
     console.error("Error connecting wallet:", error);
-    alert("Failed to connect wallet: " + error.message);
   }
 }
 
@@ -166,7 +148,7 @@ async function loadStakingInfo() {
       return;
     }
 
-    const status = await algoStakeXClient.stackingStatus("default");
+    const status = await algoStakeXClient.stackingStatus("STAKX");
 
     if (status.exists && status.stakeData) {
       const stakeData = status.stakeData;
@@ -291,7 +273,6 @@ async function withdrawStake() {
     await algoStakeXClient.withdraw("default");
   } catch (error) {
     console.error("Error withdrawing:", error);
-    alert("Failed to withdraw: " + error.message);
   }
 }
 
@@ -324,7 +305,6 @@ async function emergencyWithdrawStake() {
     await algoStakeXClient.emergencyWithdraw("default", penalty);
   } catch (error) {
     console.error("Error emergency withdrawing:", error);
-    alert("Failed to emergency withdraw: " + error.message);
   }
 }
 
@@ -406,7 +386,6 @@ document.addEventListener("DOMContentLoaded", () => {
         });
       } catch (error) {
         console.error("Error stacking:", error);
-        alert("Failed to stake: " + error.message);
       }
     });
   }
@@ -424,15 +403,15 @@ document.addEventListener("DOMContentLoaded", () => {
   // Update profile section on initial load
   if (algoStakeXClient.account) {
     updateProfileSection(algoStakeXClient.account);
-    loadStakingInfo();
-    loadWalletTokens();
+    // loadStakingInfo();
+    // loadWalletTokens();
     showStakingSection();
   }
 
   // Load staking info periodically
   setInterval(async () => {
     if (algoStakeXClient.account) {
-      await loadStakingInfo();
+      // await loadStakingInfo();
     }
   }, 30000); // Every 30 seconds
 });

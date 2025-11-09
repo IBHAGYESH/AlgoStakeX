@@ -105,11 +105,11 @@ class AlgoStakeX {
       );
 
       this.#contractApplicationId =
-        this.#network === "mainnet" ? 749041504 : 749041504;
+        this.#network === "mainnet" ? 749347292 : 749347292;
       this.#contractWalletAddress =
         this.#network === "mainnet"
-          ? "PMQMLZXHMQK2AA3XQ7KVVDWAXKGJMFSIGJOC4TSPANGUKQWZZT6R7SB5XE"
-          : "PMQMLZXHMQK2AA3XQ7KVVDWAXKGJMFSIGJOC4TSPANGUKQWZZT6R7SB5XE";
+          ? "55AV6JY3QZJ7CKLQHMZABP2YND6GLGR53J34FFEKKAS5UWUVDWZBKVJY6U"
+          : "55AV6JY3QZJ7CKLQHMZABP2YND6GLGR53J34FFEKKAS5UWUVDWZBKVJY6U";
 
       // Initialize SDK variables
       this.#indexerUrl =
@@ -204,20 +204,53 @@ class AlgoStakeX {
             this.#uiManager.showToast("Failed to load assets", "error")
           );
       },
+      onRenderMyStaking: () => {
+        this.#uiManager
+          .renderMyStaking(
+            this.#walletConnected,
+            this.account,
+            (poolId) => this.stackingStatus(poolId),
+            this.#namespace
+          )
+          .catch(() =>
+            this.#uiManager.showToast("Failed to load staking info", "error")
+          );
+      },
       onStake: async () => {
         try {
-          const selected = document.querySelector(".asxAssetItem.selected");
+          const selected = document.querySelector(
+            ".algox-stakex-asset-item.selected"
+          );
           if (!selected) {
             this.#uiManager.showToast("Select an asset first", "warning");
             return;
           }
-          const amount = Number(selected.getAttribute("data-amount")) || 0;
+          const amountInput = document.getElementById(
+            "algox-stakex-amount-input"
+          );
+          const amount = Number(amountInput?.value) || 0;
           if (!amount || amount <= 0) {
             this.#uiManager.showToast("Invalid amount", "error");
             return;
           }
           this.#uiManager.showLoadingOverlay("Staking...");
           await this.stack({ poolId: this.#namespace, amount });
+          this.#uiManager.showToast("Staking successful!", "success");
+          
+          // Wait a moment for blockchain confirmation, then refresh UI
+          setTimeout(async () => {
+            // Reload wallet assets to show updated balance
+            await this.#uiManager.renderWalletAssets(
+              this.#walletConnected,
+              this.account,
+              () => this.getWalletFTs(),
+              (tokenId) => this.getFTMetadata(tokenId),
+              this.#tokenId
+            );
+            
+            // Reset the staking form
+            this.#uiManager.resetStakingTab();
+          }, 1500);
         } catch (e) {
           this.#uiManager.showToast(e.message || "Stake failed", "error");
         } finally {
@@ -226,22 +259,49 @@ class AlgoStakeX {
       },
       onWithdraw: async () => {
         try {
-          await this.withdraw(this.#namespace);
+          // Check if it's emergency withdraw or normal withdraw
+          const withdrawBtn = document.getElementById(
+            "algox-stakex-withdraw-btn"
+          );
+          const isEmergency =
+            withdrawBtn?.className === "algox-stakex-withdraw-btn-emergency";
+
+          this.#uiManager.showLoadingOverlay(
+            isEmergency ? "Emergency withdrawing..." : "Withdrawing..."
+          );
+
+          if (isEmergency) {
+            await this.emergencyWithdraw(
+              this.#namespace,
+              this.#stakingConfig.withdraw_penalty || 5
+            );
+            this.#uiManager.showToast(
+              "Emergency withdraw successful!",
+              "success"
+            );
+          } else {
+            await this.withdraw(this.#namespace);
+            this.#uiManager.showToast("Withdraw successful!", "success");
+          }
+          
+          // Wait a moment for blockchain confirmation, then refresh UI
+          setTimeout(async () => {
+            // Reset My Staking UI
+            this.#uiManager.resetMyStakingTab();
+            
+            // Reload wallet assets in Stake tab to show updated balance
+            await this.#uiManager.renderWalletAssets(
+              this.#walletConnected,
+              this.account,
+              () => this.getWalletFTs(),
+              (tokenId) => this.getFTMetadata(tokenId),
+              this.#tokenId
+            );
+          }, 1500);
         } catch (e) {
           this.#uiManager.showToast(e.message || "Withdraw failed", "error");
-        }
-      },
-      onEmergencyWithdraw: async () => {
-        try {
-          await this.emergencyWithdraw(
-            this.#namespace,
-            this.#stakingConfig.withdraw_penalty || 5
-          );
-        } catch (e) {
-          this.#uiManager.showToast(
-            e.message || "Emergency withdraw failed",
-            "error"
-          );
+        } finally {
+          this.#uiManager.hideLoadingOverlay();
         }
       },
     });
@@ -301,6 +361,20 @@ class AlgoStakeX {
 
         if (!this.#disableUi) {
           this.#uiManager.showSDKUI();
+          // Auto-fetch assets after wallet connection restore
+          setTimeout(() => {
+            this.#uiManager
+              .renderWalletAssets(
+                this.#walletConnected,
+                this.account,
+                () => this.getWalletFTs(),
+                (tokenId) => this.getFTMetadata(tokenId),
+                this.#tokenId
+              )
+              .catch(() =>
+                this.#uiManager.showToast("Failed to load assets", "error")
+              );
+          }, 500);
         }
         eventBus.emit("wallet:connection:connected", { address: this.account });
       } else {
@@ -389,6 +463,20 @@ class AlgoStakeX {
 
       if (!this.#disableUi) {
         this.#uiManager.showSDKUI();
+        // Auto-fetch assets after wallet connection
+        setTimeout(() => {
+          this.#uiManager
+            .renderWalletAssets(
+              this.#walletConnected,
+              this.account,
+              () => this.getWalletFTs(),
+              (tokenId) => this.getFTMetadata(tokenId),
+              this.#tokenId
+            )
+            .catch(() =>
+              this.#uiManager.showToast("Failed to load assets", "error")
+            );
+        }, 500);
       } else {
         // Hide the temporary wallet connection UI
         this.#uiManager.hideTemporaryWalletConnectionUI();
@@ -429,6 +517,23 @@ class AlgoStakeX {
               if (!this.#disableUi) {
                 this.#uiManager.showSDKUI();
                 this.#uiManager.updateWalletAddressBar();
+                // Auto-fetch assets after wallet connection
+                setTimeout(() => {
+                  this.#uiManager
+                    .renderWalletAssets(
+                      this.#walletConnected,
+                      this.account,
+                      () => this.getWalletFTs(),
+                      (tokenId) => this.getFTMetadata(tokenId),
+                      this.#tokenId
+                    )
+                    .catch(() =>
+                      this.#uiManager.showToast(
+                        "Failed to load assets",
+                        "error"
+                      )
+                    );
+                }, 500);
               } else {
                 this.#uiManager.hideTemporaryWalletConnectionUI();
               }
@@ -593,6 +698,20 @@ class AlgoStakeX {
 
       if (!this.#disableUi) {
         this.#uiManager.showSDKUI();
+        // Auto-fetch assets after wallet connection
+        setTimeout(() => {
+          this.#uiManager
+            .renderWalletAssets(
+              this.#walletConnected,
+              this.account,
+              () => this.getWalletFTs(),
+              (tokenId) => this.getFTMetadata(tokenId),
+              this.#tokenId
+            )
+            .catch(() =>
+              this.#uiManager.showToast("Failed to load assets", "error")
+            );
+        }, 500);
       }
 
       return {
@@ -763,10 +882,15 @@ class AlgoStakeX {
 
       // Use config defaults if not provided
       const isFlexible = this.#stakingConfig.type === "FLEXIBLE";
-      const finalLockPeriod =
+      let finalLockPeriod =
         lockPeriod !== null
           ? lockPeriod
           : this.#stakingConfig.stake_period || 0;
+
+      // Convert lock period from minutes to seconds
+      // Config expects minutes, smart contract expects seconds
+      finalLockPeriod = finalLockPeriod * 60;
+
       const finalRewardType = rewardType || this.#stakingConfig.reward.type;
       let defaultRate = 0;
       let defaultUtility = "";
@@ -778,8 +902,14 @@ class AlgoStakeX {
           if (typeof cfg.value === "string") defaultUtility = cfg.value;
         }
       }
-      const finalRewardRate = rewardRate || defaultRate || 0;
+      let finalRewardRate = rewardRate || defaultRate || 0;
       const finalUtility = utility || defaultUtility || "";
+
+      // Convert APY percentage to basis points (5% = 500 basis points)
+      // Smart contract expects basis points where 10000 = 100%
+      if (finalRewardType === "APY" && finalRewardRate > 0) {
+        finalRewardRate = Math.floor(finalRewardRate * 100);
+      }
 
       // Validate reward type and rate
       if (finalRewardType === "APY" && finalRewardRate <= 0) {
@@ -948,6 +1078,13 @@ class AlgoStakeX {
 
       const withdrawMethod = encoder.methods.find((m) => m.name === "withdraw");
 
+      // Build box reference for stake data
+      const boxName = buildStakeBoxName(poolId, this.account);
+      const stakeBoxRef = {
+        appIndex: this.#contractApplicationId,
+        name: boxName,
+      };
+
       const withdrawTxn = algosdk.makeApplicationCallTxnFromObject({
         sender: this.account,
         appIndex: this.#contractApplicationId,
@@ -956,10 +1093,12 @@ class AlgoStakeX {
           withdrawMethod.getSelector(),
           algosdk.ABIType.from("string").encode(poolId),
         ],
+        boxes: [stakeBoxRef],
+        foreignAssets: [Number(this.#tokenId)],
         suggestedParams: {
           ...suggestedParams,
           flatFee: true,
-          fee: 2000,
+          fee: 3000,
         },
       });
 
@@ -1006,11 +1145,11 @@ class AlgoStakeX {
       }
 
       // Read stake data from box storage
-      const stakeKey = getStakeKey(poolId, this.account);
+      const boxName = buildStakeBoxName(poolId, this.account);
 
       try {
         const boxValue = await this.#algodClient
-          .getApplicationBoxByName(this.#contractApplicationId, stakeKey)
+          .getApplicationBoxByName(this.#contractApplicationId, boxName)
           .do();
 
         if (!boxValue || !boxValue.value) {
@@ -1022,7 +1161,6 @@ class AlgoStakeX {
         }
 
         // Decode the stake data from box value
-        // The box contains ARC-4 encoded StakeData struct
         const stakeData = decodeStakeData(boxValue.value);
 
         return {
@@ -1031,6 +1169,7 @@ class AlgoStakeX {
           stakeData: stakeData,
         };
       } catch (error) {
+        console.error("Box lookup error:", error);
         // Box doesn't exist
         if (
           error.message.includes("box not found") ||
@@ -1046,7 +1185,7 @@ class AlgoStakeX {
         throw error;
       }
     } catch (error) {
-      console.error("Error fetching stacking status:", error.message);
+      console.error("Error fetching stacking status:", error.message, error);
       if (
         error.message.includes("No stake found") ||
         error.message.includes("not found") ||
@@ -1236,6 +1375,13 @@ class AlgoStakeX {
         (m) => m.name === "emergencyWithdraw"
       );
 
+      // Build box reference for stake data
+      const boxName = buildStakeBoxName(poolId, this.account);
+      const stakeBoxRef = {
+        appIndex: this.#contractApplicationId,
+        name: boxName,
+      };
+
       const emergencyWithdrawTxn = algosdk.makeApplicationCallTxnFromObject({
         sender: this.account,
         appIndex: this.#contractApplicationId,
@@ -1245,10 +1391,12 @@ class AlgoStakeX {
           algosdk.ABIType.from("string").encode(poolId),
           algosdk.ABIType.from("uint64").encode(BigInt(penaltyPercentage)),
         ],
+        boxes: [stakeBoxRef],
+        foreignAssets: [Number(this.#tokenId)],
         suggestedParams: {
           ...suggestedParams,
           flatFee: true,
-          fee: 2000,
+          fee: 3000,
         },
       });
 

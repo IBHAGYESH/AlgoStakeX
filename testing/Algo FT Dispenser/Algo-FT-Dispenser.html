@@ -1,0 +1,94 @@
+<!-- AlgoStakeX FT Dispenser (Dummy DEX) -->
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Algo FT Dispenser</title>
+    <link rel="stylesheet" href="styles.css" />
+    <!-- Load AlgoStakeX SDK build (ensure dist is built) -->
+    <script defer src="../../dist/algostakex.js"></script>
+    <script src="https://unpkg.com/algosdk@latest/dist/browser/algosdk.min.js"></script>
+  </head>
+  <body>
+    <div class="container">
+      <h1>Algo FT Dispenser</h1>
+      <p class="subtitle">
+        Mint and dispense test FTs to your connected wallet.
+      </p>
+
+      <div class="card">
+        <div class="row">
+          <button id="connectWalletBtn" class="btn primary">
+            Connect Wallet
+          </button>
+          <span id="connectedWallet" class="muted"></span>
+        </div>
+
+        <div class="form-section">
+          <h3>FT Configuration</h3>
+
+          <div class="form-group">
+            <label for="unitName">Unit Name (3 chars max, uppercase)</label>
+            <input
+              type="text"
+              id="unitName"
+              placeholder="TKN"
+              maxlength="3"
+              style="text-transform: uppercase"
+              required
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="assetName">Asset Name (50 chars max)</label>
+            <input
+              type="text"
+              id="assetName"
+              placeholder="Test Token"
+              maxlength="50"
+              required
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="decimals">Decimals (0-18)</label>
+            <input
+              type="number"
+              id="decimals"
+              placeholder="6"
+              min="0"
+              max="18"
+              value="6"
+              required
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="total">Total Supply</label>
+            <input
+              type="number"
+              id="total"
+              placeholder="1000000"
+              min="1"
+              value="1000000"
+              required
+            />
+          </div>
+        </div>
+
+        <div class="row">
+          <button id="getTokensBtn" class="btn" style="width: 100%">
+            Create & Dispense FT
+          </button>
+        </div>
+
+        <div class="info">
+          <p id="status" class="muted">Status: Idle</p>
+          <p id="assetInfo" class="muted"></p>
+        </div>
+      </div>
+    </div>
+    <script src="script.js" type="module" defer></script>
+  </body>
+</html>

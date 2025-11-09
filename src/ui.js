@@ -90,14 +90,14 @@ export class UIManager {
           <div id="algox-stakex-stake-tab" class="algox-stakex-tab-pane">
             <div id="algox-stakex-asset-list" class="algox-stakex-asset-list"></div>
             <div class="algox-stakex-row">
-              <button id="algox-stakex-stake-btn">Stake Selected</button>
+              <input type="number" id="algox-stakex-amount-input" placeholder="Amount" disabled />
+              <button id="algox-stakex-stake-btn" disabled>Stake</button>
             </div>
           </div>
           <div id="algox-stakex-mystakes-tab" class="algox-stakex-tab-pane" style="display:none;">
             <div id="algox-stakex-mystake-summary"></div>
             <div class="algox-stakex-row">
-              <button id="algox-stakex-withdraw-btn">Withdraw</button>
-              <button id="algox-stakex-emergency-withdraw-btn">Emergency Withdraw</button>
+              <button id="algox-stakex-withdraw-btn" disabled>Withdraw</button>
             </div>
           </div>
         </div>
@@ -131,8 +131,8 @@ export class UIManager {
     minimizedBtn.innerHTML = this.#logo
       ? `<img src="${
           this.#logo
-        }" alt="ASX" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';" /><span style="display: none;">AMX</span>`
-      : "AMX";
+        }" alt="ASX" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';" /><span style="display: none;">ASX</span>`
+      : "ASX";
 
     document.body.appendChild(minimizedBtn);
 
@@ -181,12 +181,21 @@ export class UIManager {
     container?.querySelectorAll(".algox-stakex-tab-btn").forEach((btn) => {
       btn.addEventListener("click", () => {
         const tab = btn.getAttribute("data-tab");
+        // Update active tab styling
+        container
+          .querySelectorAll(".algox-stakex-tab-btn")
+          .forEach((b) => b.classList.remove("active"));
+        btn.classList.add("active");
+
         container.querySelector("#algox-stakex-stake-tab").style.display =
           tab === "stake" ? "block" : "none";
         container.querySelector("#algox-stakex-mystakes-tab").style.display =
           tab === "mystakes" ? "block" : "none";
+
         if (tab === "stake") {
           callbacks.onRenderAssets();
+        } else if (tab === "mystakes") {
+          callbacks.onRenderMyStaking();
         }
       });
     });
@@ -199,10 +208,6 @@ export class UIManager {
     document
       .getElementById("algox-stakex-withdraw-btn")
       ?.addEventListener("click", async () => callbacks.onWithdraw());
-
-    document
-      .getElementById("algox-stakex-emergency-withdraw-btn")
-      ?.addEventListener("click", async () => callbacks.onEmergencyWithdraw());
 
     // Maximized button
     document
@@ -318,6 +323,13 @@ export class UIManager {
         if (list)
           list.innerHTML =
             '<div class="algox-stakex-asset-empty">Connect wallet to view assets</div>';
+        // Disable stake button and input
+        const stakeBtn = document.getElementById("algox-stakex-stake-btn");
+        const amountInput = document.getElementById(
+          "algox-stakex-amount-input"
+        );
+        if (stakeBtn) stakeBtn.disabled = true;
+        if (amountInput) amountInput.disabled = true;
         return;
       }
 
@@ -336,7 +348,14 @@ export class UIManager {
       if (!filtered.length) {
         if (list)
           list.innerHTML =
-            '<div class="algox-stakex-asset-empty">No matching assets found</div>';
+            '<div class="algox-stakex-asset-empty">No assets available for staking</div>';
+        // Disable stake button and input
+        const stakeBtn = document.getElementById("algox-stakex-stake-btn");
+        const amountInput = document.getElementById(
+          "algox-stakex-amount-input"
+        );
+        if (stakeBtn) stakeBtn.disabled = true;
+        if (amountInput) amountInput.disabled = true;
         return;
       }
 
@@ -366,12 +385,25 @@ export class UIManager {
       if (list) list.innerHTML = itemsHtml;
 
       // Selection handler
-      document.querySelectorAll(".algox-asset-item").forEach((el) => {
+      document.querySelectorAll(".algox-stakex-asset-item").forEach((el) => {
         el.addEventListener("click", () => {
           document
-            .querySelectorAll(".algox-asset-item")
+            .querySelectorAll(".algox-stakex-asset-item")
             .forEach((e2) => e2.classList.remove("selected"));
           el.classList.add("selected");
+
+          // Enable stake button and input, set input value to asset amount
+          const amount = el.getAttribute("data-amount");
+          const stakeBtn = document.getElementById("algox-stakex-stake-btn");
+          const amountInput = document.getElementById(
+            "algox-stakex-amount-input"
+          );
+          if (stakeBtn) stakeBtn.disabled = false;
+          if (amountInput) {
+            amountInput.disabled = false;
+            amountInput.value = amount;
+            amountInput.max = amount;
+          }
         });
       });
     } catch (e) {
@@ -380,6 +412,56 @@ export class UIManager {
         list.innerHTML = `<div class="algox-stakex-asset-error">${
           e.message || "Failed to load assets"
         }</div>`;
+      // Disable stake button and input
+      const stakeBtn = document.getElementById("algox-stakex-stake-btn");
+      const amountInput = document.getElementById("algox-stakex-amount-input");
+      if (stakeBtn) stakeBtn.disabled = true;
+      if (amountInput) amountInput.disabled = true;
+    }
+  }
+
+  /**
+   * Reset staking tab UI
+   */
+  resetStakingTab() {
+    // Clear selected asset with a slight delay to ensure DOM is ready
+    setTimeout(() => {
+      document.querySelectorAll(".algox-stakex-asset-item").forEach((el) => {
+        el.classList.remove("selected");
+      });
+
+      // Clear and disable amount input
+      const amountInput = document.getElementById("algox-stakex-amount-input");
+      if (amountInput) {
+        amountInput.value = "";
+        amountInput.disabled = true;
+        amountInput.placeholder = "Amount";
+      }
+
+      // Disable stake button
+      const stakeBtn = document.getElementById("algox-stakex-stake-btn");
+      if (stakeBtn) {
+        stakeBtn.disabled = true;
+      }
+    }, 100);
+  }
+
+  /**
+   * Reset My Staking tab UI
+   */
+  resetMyStakingTab() {
+    const summary = document.getElementById("algox-stakex-mystake-summary");
+    if (summary) {
+      summary.innerHTML =
+        '<div class="algox-stakex-mystake-empty">You currently don\'t have any staking</div>';
+    }
+
+    // Disable withdraw button
+    const withdrawBtn = document.getElementById("algox-stakex-withdraw-btn");
+    if (withdrawBtn) {
+      withdrawBtn.disabled = true;
+      withdrawBtn.className = "algox-stakex-withdraw-btn";
+      withdrawBtn.textContent = "Withdraw";
     }
   }
 
@@ -677,4 +759,190 @@ export class UIManager {
   // SDK-SPECIFIC METHODS (ALGOSTAKEX)
   // ==========================================
   // renderWalletAssets method is defined above in the common section
+
+  /**
+   * Render My Staking tab with detailed staking info
+   */
+  async renderMyStaking(walletConnected, account, getStakingStatus, poolId) {
+    try {
+      const summary = document.getElementById("algox-stakex-mystake-summary");
+      const withdrawBtn = document.getElementById("algox-stakex-withdraw-btn");
+
+      if (!walletConnected || !account) {
+        if (summary)
+          summary.innerHTML =
+            '<div class="algox-stakex-mystake-empty">Connect wallet to view staking info</div>';
+        if (withdrawBtn) withdrawBtn.disabled = true;
+        return;
+      }
+
+      if (summary)
+        summary.innerHTML =
+          '<div class="algox-stakex-mystake-loading">Loading staking info...</div>';
+
+      const status = await getStakingStatus(poolId);
+
+      if (!status.exists || !status.stakeData) {
+        if (summary)
+          summary.innerHTML =
+            '<div class="algox-stakex-mystake-empty">You currently don\'t have any staking</div>';
+        if (withdrawBtn) withdrawBtn.disabled = true;
+        return;
+      }
+
+      const data = status.stakeData;
+      const currentTime = Math.floor(Date.now() / 1000);
+      const isLockExpired = currentTime >= data.lockEndTime;
+      const remainingSeconds = Math.max(0, data.lockEndTime - currentTime);
+      const remainingDays = Math.floor(remainingSeconds / 86400);
+      const remainingHours = Math.floor((remainingSeconds % 86400) / 3600);
+      const remainingMinutes = Math.floor((remainingSeconds % 3600) / 60);
+
+      // Calculate current generated reward (simple APY calculation)
+      let currentReward = 0;
+      if (data.rewardType === "APY" && data.rewardRate > 0) {
+        const stakeDuration = currentTime - data.stakedAt;
+        const yearInSeconds = 365 * 24 * 60 * 60;
+        // rewardRate is in basis points (10000 = 100%)
+        currentReward = Math.floor(
+          (data.amount * data.rewardRate * stakeDuration) /
+            (yearInSeconds * 10000)
+        );
+      }
+
+      // Convert Unix timestamps (seconds) to JavaScript Date objects
+      const stakingDate = new Date(data.stakedAt * 1000).toLocaleString();
+      const lockEndDate = new Date(data.lockEndTime * 1000).toLocaleString();
+      const lockPeriodDays = Math.floor(data.lockPeriod / 86400);
+      const lockPeriodHours = Math.floor((data.lockPeriod % 86400) / 3600);
+      const lockPeriodMinutes = Math.floor((data.lockPeriod % 3600) / 60);
+
+      // Calculate total amount (principal + profit) when completed
+      const totalAmount = data.amount + currentReward;
+
+      const infoHtml = `
+        <div class="algox-stakex-mystake-info">
+          <div class="algox-stakex-mystake-item">
+            <span class="algox-stakex-mystake-label">Token ID</span>
+            <span class="algox-stakex-mystake-value">${data.tokenId}</span>
+          </div>
+          <div class="algox-stakex-mystake-item">
+            <span class="algox-stakex-mystake-label">Staking Type</span>
+            <span class="algox-stakex-mystake-value">${
+              data.isFlexible ? "🔓 Flexible" : "🔒 Locked"
+            }</span>
+          </div>
+          <div class="algox-stakex-mystake-item">
+            <span class="algox-stakex-mystake-label">Staking Amount</span>
+            <span class="algox-stakex-mystake-value">${data.amount}</span>
+          </div>
+          <div class="algox-stakex-mystake-item">
+            <span class="algox-stakex-mystake-label">Lock Period</span>
+            <span class="algox-stakex-mystake-value">${lockPeriodDays}d ${lockPeriodHours}h ${lockPeriodMinutes}m</span>
+          </div>
+          <div class="algox-stakex-mystake-item">
+            <span class="algox-stakex-mystake-label">Staked At</span>
+            <span class="algox-stakex-mystake-value">${stakingDate}</span>
+          </div>
+          <div class="algox-stakex-mystake-item">
+            <span class="algox-stakex-mystake-label">Lock End Time</span>
+            <span class="algox-stakex-mystake-value">${lockEndDate}</span>
+          </div>
+          <div class="algox-stakex-mystake-item full-width">
+            <span class="algox-stakex-mystake-label">Remaining Period</span>
+            <span class="algox-stakex-mystake-value ${
+              isLockExpired ? "algox-stakex-mystake-completed" : ""
+            }">${
+        isLockExpired
+          ? "✓ Completed"
+          : `⏳ ${remainingDays}d ${remainingHours}h ${remainingMinutes}m`
+      }</span>
+          </div>
+          <div class="algox-stakex-mystake-item">
+            <span class="algox-stakex-mystake-label">Reward Type</span>
+            <span class="algox-stakex-mystake-value">${data.rewardType}</span>
+          </div>
+          ${
+            data.rewardType === "APY"
+              ? `
+          <div class="algox-stakex-mystake-item">
+            <span class="algox-stakex-mystake-label">Reward Rate</span>
+            <span class="algox-stakex-mystake-value">${(
+              data.rewardRate / 100
+            ).toFixed(2)}%</span>
+          </div>
+          `
+              : ""
+          }
+          ${
+            data.rewardType === "UTILITY" && data.utility
+              ? `
+          <div class="algox-stakex-mystake-item">
+            <span class="algox-stakex-mystake-label">Utility Value</span>
+            <span class="algox-stakex-mystake-value">${data.utility}</span>
+          </div>
+          `
+              : ""
+          }
+          ${
+            data.rewardType === "APY"
+              ? `
+          <div class="algox-stakex-mystake-item">
+            <span class="algox-stakex-mystake-label">Current Reward</span>
+            <span class="algox-stakex-mystake-value algox-stakex-mystake-reward">💰 ${currentReward}</span>
+          </div>
+          `
+              : ""
+          }
+          <div class="algox-stakex-mystake-item">
+            <span class="algox-stakex-mystake-label">Rewards Claimed</span>
+            <span class="algox-stakex-mystake-value">${
+              data.totalRewardsClaimed
+            }</span>
+          </div>
+          ${
+            isLockExpired && data.rewardType === "APY"
+              ? `
+          <div class="algox-stakex-mystake-item full-width">
+            <span class="algox-stakex-mystake-label">💎 Total Amount (Principal + Profit)</span>
+            <span class="algox-stakex-mystake-value algox-stakex-mystake-total">${totalAmount}</span>
+          </div>
+          `
+              : ""
+          }
+        </div>
+      `;
+
+      if (summary) summary.innerHTML = infoHtml;
+
+      // Update withdraw button based on staking type and lock status
+      if (withdrawBtn) {
+        withdrawBtn.disabled = false;
+
+        // For flexible staking, always show regular withdraw
+        if (data.isFlexible) {
+          withdrawBtn.textContent = "Withdraw";
+          withdrawBtn.className = "algox-stakex-withdraw-btn-ready";
+        }
+        // For locked staking, show based on lock expiry
+        else {
+          if (isLockExpired) {
+            withdrawBtn.textContent = "Withdraw";
+            withdrawBtn.className = "algox-stakex-withdraw-btn-ready";
+          } else {
+            withdrawBtn.textContent = "Emergency Withdraw";
+            withdrawBtn.className = "algox-stakex-withdraw-btn-emergency";
+          }
+        }
+      }
+    } catch (e) {
+      const summary = document.getElementById("algox-stakex-mystake-summary");
+      if (summary)
+        summary.innerHTML = `<div class="algox-stakex-mystake-error">${
+          e.message || "Failed to load staking info"
+        }</div>`;
+      const withdrawBtn = document.getElementById("algox-stakex-withdraw-btn");
+      if (withdrawBtn) withdrawBtn.disabled = true;
+    }
+  }
 }

@@ -19,6 +19,35 @@ const TREASURY_MNEMONIC = "";
 let algodClient;
 let processing = false;
 
+// Add input validation event listeners
+document.addEventListener("DOMContentLoaded", () => {
+  // Unit name: enforce uppercase and 3 char limit
+  const unitNameInput = document.getElementById("unitName");
+  if (unitNameInput) {
+    unitNameInput.addEventListener("input", (e) => {
+      e.target.value = e.target.value.toUpperCase().slice(0, 3);
+    });
+  }
+
+  // Decimals: enforce 0-18 range
+  const decimalsInput = document.getElementById("decimals");
+  if (decimalsInput) {
+    decimalsInput.addEventListener("input", (e) => {
+      let value = parseInt(e.target.value, 10);
+      if (value < 0) e.target.value = 0;
+      if (value > 18) e.target.value = 18;
+    });
+  }
+
+  // Total: prevent negative values
+  const totalInput = document.getElementById("total");
+  if (totalInput) {
+    totalInput.addEventListener("input", (e) => {
+      if (parseInt(e.target.value, 10) < 0) e.target.value = 1;
+    });
+  }
+});
+
 function setStatus(text) {
   const el = document.getElementById("status");
   if (el) el.textContent = `Status: ${text}`;
@@ -96,26 +125,61 @@ async function waitForConfirmation(algod, txId) {
   throw new Error("Transaction confirmation timeout");
 }
 
-async function createFTAndDispense(toAddress, amountToSend) {
-  setProcessing(true);
-  setStatus("Connecting dispenser...");
+/**
+ * Create a new FT (ASA) and transfer it to the user
+ */
+async function createFTAndDispense(recipientAddr) {
+  if (!algodClient) {
+    throw new Error("Algod client not initialized");
+  }
+  if (!TREASURY_MNEMONIC) {
+    throw new Error("Treasury mnemonic not set");
+  }
+
   const treasury = algosdk.mnemonicToSecretKey(TREASURY_MNEMONIC);
   const creatorAddr = treasury.addr;
 
   setStatus("Fetching suggested params...");
   const params = await algodClient.getTransactionParams().do();
 
-  // Normalize and validate requested amount (base units)
-  const integerRequest = Number.parseInt(String(amountToSend), 10);
-  if (!Number.isFinite(integerRequest) || integerRequest <= 0) {
-    throw new Error("Invalid amount: must be a positive integer (base units)");
+  // Get FT configuration from form inputs
+  const unitNameInput = document
+    .getElementById("unitName")
+    .value.trim()
+    .toUpperCase();
+  const assetNameInput = document.getElementById("assetName").value.trim();
+  const decimalsInput = Number.parseInt(
+    document.getElementById("decimals").value,
+    10
+  );
+  const totalInput = Number.parseInt(
+    document.getElementById("total").value,
+    10
+  );
+
+  // Validate inputs
+  if (!unitNameInput || unitNameInput.length > 3) {
+    throw new Error("Unit name must be 1-3 characters");
+  }
+  if (!assetNameInput || assetNameInput.length > 50) {
+    throw new Error("Asset name must be 1-50 characters");
+  }
+  if (
+    !Number.isFinite(decimalsInput) ||
+    decimalsInput < 0 ||
+    decimalsInput > 18
+  ) {
+    throw new Error("Decimals must be between 0 and 18");
+  }
+  if (!Number.isFinite(totalInput) || totalInput <= 0) {
+    throw new Error("Total supply must be a positive number");
   }
 
-  // Create a new FT (ASA) with enough total supply (fixed supply for demo)
-  const unitName = "TKN";
-  const assetName = "Test Token";
-  const decimals = 6;
-  const total = integerRequest; // 1,000,000.000000 units
+  // Create a new FT (ASA) with user-specified configuration
+  const unitName = unitNameInput;
+  const assetName = assetNameInput;
+  const decimals = decimalsInput;
+  const total = totalInput;
 
   const createTxn = algosdk.makeAssetCreateTxnWithSuggestedParamsFromObject({
     sender: creatorAddr,
@@ -168,15 +232,12 @@ async function createFTAndDispense(toAddress, amountToSend) {
     console.warn("Opt-in error (may already be opted-in):", e?.message || e);
   }
 
-  // Attempt to transfer requested amount
-  const microAmount = integerRequest;
-  if (microAmount > total) {
-    throw new Error("Requested amount exceeds dispenser asset supply");
-  }
+  // Transfer the entire total supply to the recipient
+  const microAmount = total;
   const transferTxn = algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject(
     {
       sender: creatorAddr,
-      receiver: toAddress,
+      receiver: recipientAddr,
       amount: microAmount,
       assetIndex: assetId,
       suggestedParams: params,
@@ -208,7 +269,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   // Hook up UI
   const connectBtn = document.getElementById("connectWalletBtn");
   const dispenseBtn = document.getElementById("getTokensBtn");
-  const amountInput = document.getElementById("amount");
 
   // Update connected wallet display on events
   await ensureSdk();
@@ -230,20 +290,25 @@ document.addEventListener("DOMContentLoaded", async () => {
   dispenseBtn.addEventListener("click", async () => {
     try {
       if (processing) return;
+
+      // Disable button and show processing state
+      dispenseBtn.disabled = true;
+      dispenseBtn.textContent = "Processing...";
+
       setStatus("Preparing...");
       const addr = getConnectedAccount();
       if (!addr) {
         alert("Please connect your wallet first.");
         setStatus("Idle");
+        dispenseBtn.disabled = false;
+        dispenseBtn.textContent = "Create & Dispense FT";
         return;
       }
-      const raw = Number(amountInput.value || 0);
-      if (!raw || raw <= 0) {
-        alert("Enter a valid amount (in base units, e.g., micro tokens)");
-        setStatus("Idle");
-        return;
-      }
-      await createFTAndDispense(addr, raw);
+      await createFTAndDispense(addr);
+
+      // Re-enable button after success
+      dispenseBtn.disabled = false;
+      dispenseBtn.textContent = "Create & Dispense FT";
     } catch (e) {
       console.error(e);
       setStatus(`Error: ${e.message || e}`);
@@ -251,6 +316,10 @@ document.addEventListener("DOMContentLoaded", async () => {
         "Transfer failed. Ensure your wallet opted-in to the newly created asset before transfer."
       );
       setProcessing(false);
+
+      // Re-enable button after error
+      dispenseBtn.disabled = false;
+      dispenseBtn.textContent = "Create & Dispense FT";
     }
   });
 });

@@ -111,21 +111,16 @@ export function buildStakeBoxName(poolId, userAddress) {
 
 export function decodeStakeData(boxValueBytes) {
   // Decode ARC-4 encoded StakeData struct from box value
-  // The box contains ARC-4 encoded data
   try {
-    const view = new DataView(boxValueBytes.buffer);
+    const view = new DataView(boxValueBytes.buffer, boxValueBytes.byteOffset, boxValueBytes.byteLength);
     let offset = 0;
-
-    // ARC-4 encoding for structs includes a type prefix (2 bytes)
-    // Skip type prefix (2 bytes for struct type ID)
-    offset += 2;
 
     // Decode staker (arc4.Address = 32 bytes)
     const stakerBytes = boxValueBytes.slice(offset, offset + 32);
     const staker = algosdk.encodeAddress(stakerBytes);
     offset += 32;
 
-    // Decode tokenId (arc4.Uint64 = 8 bytes)
+    // Decode tokenId (arc4.Uint64 = 8 bytes, big-endian)
     const tokenId = view.getBigUint64(offset, false);
     offset += 8;
 
@@ -133,46 +128,53 @@ export function decodeStakeData(boxValueBytes) {
     const isFlexible = boxValueBytes[offset] !== 0;
     offset += 1;
 
-    // Decode amount (arc4.Uint64 = 8 bytes)
+    // Decode amount (arc4.Uint64 = 8 bytes, big-endian)
     const amount = view.getBigUint64(offset, false);
     offset += 8;
 
-    // Decode stakedAt (arc4.Uint64 = 8 bytes)
+    // Decode stakedAt (arc4.Uint64 = 8 bytes, big-endian)
     const stakedAt = view.getBigUint64(offset, false);
     offset += 8;
 
-    // Decode lockPeriod (arc4.Uint64 = 8 bytes)
+    // Decode lockPeriod (arc4.Uint64 = 8 bytes, big-endian)
     const lockPeriod = view.getBigUint64(offset, false);
     offset += 8;
 
-    // Decode lockEndTime (arc4.Uint64 = 8 bytes)
+    // Decode lockEndTime (arc4.Uint64 = 8 bytes, big-endian)
     const lockEndTime = view.getBigUint64(offset, false);
     offset += 8;
 
-    // Decode rewardType (arc4.Str = length (2 bytes) + string bytes)
-    const rewardTypeLength = view.getUint16(offset, false);
+    // ARC-4 struct with dynamic fields uses offset pointers
+    // rewardType offset pointer (2 bytes)
+    const rewardTypeOffset = view.getUint16(offset, false);
     offset += 2;
-    const rewardTypeBytes = boxValueBytes.slice(
-      offset,
-      offset + rewardTypeLength
-    );
-    const rewardType = new TextDecoder().decode(rewardTypeBytes);
-    offset += rewardTypeLength;
-
-    // Decode rewardRate (arc4.Uint64 = 8 bytes)
+    
+    // rewardRate (8 bytes)
     const rewardRate = view.getBigUint64(offset, false);
     offset += 8;
-
-    // Decode utility (arc4.Str = length (2 bytes) + string bytes)
-    const utilityLength = view.getUint16(offset, false);
+    
+    // utility offset pointer (2 bytes)
+    const utilityOffset = view.getUint16(offset, false);
     offset += 2;
-    const utilityBytes = boxValueBytes.slice(offset, offset + utilityLength);
-    const utility = new TextDecoder().decode(utilityBytes);
-    offset += utilityLength;
-
-    // Decode totalRewardsClaimed (arc4.Uint64 = 8 bytes)
+    
+    // totalRewardsClaimed (8 bytes)
     const totalRewardsClaimed = view.getBigUint64(offset, false);
     offset += 8;
+    
+    // Decode dynamic fields using their offsets
+    let rewardTypeLength = view.getUint16(rewardTypeOffset, false);
+    let rewardTypeBytes = boxValueBytes.slice(
+      rewardTypeOffset + 2,
+      rewardTypeOffset + 2 + rewardTypeLength
+    );
+    const rewardType = new TextDecoder().decode(rewardTypeBytes);
+    
+    let utilityLength = view.getUint16(utilityOffset, false);
+    let utilityBytes = boxValueBytes.slice(
+      utilityOffset + 2,
+      utilityOffset + 2 + utilityLength
+    );
+    const utility = new TextDecoder().decode(utilityBytes);
 
     return {
       staker: staker,
@@ -189,6 +191,7 @@ export function decodeStakeData(boxValueBytes) {
     };
   } catch (error) {
     console.error("Error decoding stake data:", error);
+    console.error("Box value bytes:", Array.from(boxValueBytes));
     throw error;
   }
 }
