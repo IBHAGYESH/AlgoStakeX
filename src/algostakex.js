@@ -105,11 +105,11 @@ class AlgoStakeX {
       );
 
       this.#contractApplicationId =
-        this.#network === "mainnet" ? 749392746 : 749392746;
+        this.#network === "mainnet" ? 749398411 : 749398411;
       this.#contractWalletAddress =
         this.#network === "mainnet"
-          ? "MSPVUMLFRWNMH64A344GKM4SSJC5QZGCVW2W3RK6ZVNACH2CK6SUNPUJE4"
-          : "MSPVUMLFRWNMH64A344GKM4SSJC5QZGCVW2W3RK6ZVNACH2CK6SUNPUJE4";
+          ? "L6NNBELLKVLA5JPAB5JK5B33IQIT6QQHS4EQMBOLBSMKBK7XFIENZLKGZQ"
+          : "L6NNBELLKVLA5JPAB5JK5B33IQIT6QQHS4EQMBOLBSMKBK7XFIENZLKGZQ";
 
       // Initialize SDK variables
       this.#indexerUrl =
@@ -1102,6 +1102,14 @@ class AlgoStakeX {
         throw new Error("Wallet is not connected");
       }
 
+      if (!this.#treasuryWallet || !this.#treasuryWallet.mnemonic) {
+        throw new Error(
+          "SDK not enabled: treasury wallet is required to pay rewards"
+        );
+      }
+
+      // Address validations removed per user request
+
       this.#processing = true;
       eventBus.emit("sdk:processing:started", { processing: this.#processing });
 
@@ -1136,6 +1144,34 @@ class AlgoStakeX {
         name: boxName,
       };
 
+      // Read stake data to compute rewards client-side
+      const boxValue = await this.#algodClient
+        .getApplicationBoxByName(this.#contractApplicationId, boxName)
+        .do();
+      if (!boxValue || !boxValue.value) {
+        throw new Error("No active stake found");
+      }
+      const stakeData = decodeStakeData(boxValue.value);
+      console.log("Stake data:", stakeData);
+
+      // Compute rewards in base units: amount * rateBP / 10000 * time / YEAR
+      const nowSeconds = Math.floor(Date.now() / 1000);
+      const timeStaked = Math.max(
+        0,
+        nowSeconds - Number(stakeData.stakedAt || 0)
+      );
+      const YEAR_SECONDS = 365 * 24 * 60 * 60;
+      let rewards = 0;
+      if (stakeData.rewardType === "APY") {
+        const rateBP = Number(stakeData.rewardRate || 0);
+        const amountRaw = Number(stakeData.amount || 0);
+        if (rateBP > 0 && amountRaw > 0 && timeStaked > 0) {
+          rewards = Math.floor(
+            (amountRaw * rateBP * timeStaked) / (10000 * YEAR_SECONDS)
+          );
+        }
+      }
+
       const withdrawTxn = algosdk.makeApplicationCallTxnFromObject({
         sender: this.account,
         appIndex: this.#contractApplicationId,
@@ -1153,22 +1189,75 @@ class AlgoStakeX {
         },
       });
 
-      // Sign and send
-      let signedTxn;
-      if (this.#mnemonicAccount) {
-        signedTxn = [withdrawTxn.signTxn(this.#mnemonicAccount.sk)];
-      } else {
-        const signedGroup = await walletConnector.signTransaction([
-          [{ txn: withdrawTxn, signers: [this.account] }],
-        ]);
-        signedTxn = Array.isArray(signedGroup[0])
-          ? signedGroup[0]
-          : signedGroup;
+      // If rewards > 0, create treasury → user ASA transfer
+      let rewardAxferTxn = null;
+      if (rewards > 0) {
+        // Ensure treasury address from enable flow
+        const treasuryAddr = this.#treasuryWallet.address;
+        if (!treasuryAddr || !algosdk.isValidAddress(treasuryAddr)) {
+          throw new Error("Treasury wallet address not set or invalid");
+        }
+
+        // treasury must be opted-in to ASA and have balance
+        rewardAxferTxn =
+          algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
+            sender: treasuryAddr,
+            receiver: this.account,
+            amount: rewards,
+            assetIndex: Number(this.#tokenId),
+            suggestedParams: {
+              ...suggestedParams,
+              flatFee: true,
+              fee: 1000,
+            },
+          });
       }
 
-      const { txid } = await this.#algodClient
-        .sendRawTransaction(signedTxn)
-        .do();
+      // Group and sign
+      const txns = rewardAxferTxn
+        ? [withdrawTxn, rewardAxferTxn]
+        : [withdrawTxn];
+      algosdk.assignGroupID(txns);
+
+      const signed = [];
+      // Sign app call by user
+      if (this.#mnemonicAccount) {
+        signed.push(withdrawTxn.signTxn(this.#mnemonicAccount.sk));
+        // Sign treasury reward transfer (locally) if present
+        if (rewardAxferTxn) {
+          const treasuryAccount = algosdk.mnemonicToSecretKey(
+            this.#treasuryWallet.mnemonic
+          );
+          signed.push(rewardAxferTxn.signTxn(treasuryAccount.sk));
+        }
+      } else {
+        // Pass the full transaction group to wallet, but mark which txns to sign
+        const txnsToSign = rewardAxferTxn
+          ? [
+              { txn: withdrawTxn, signers: [this.account] },
+              { txn: rewardAxferTxn, signers: [] }, // Empty signers = don't sign this one
+            ]
+          : [{ txn: withdrawTxn, signers: [this.account] }];
+
+        const signedGroup = await walletConnector.signTransaction([txnsToSign]);
+
+        // Extract the signed withdraw txn
+        const userSignedTxn = Array.isArray(signedGroup[0])
+          ? signedGroup[0][0] // when rewardAxferTxn is present
+          : signedGroup[0]; // when rewardAxferTxn is not present
+        signed.push(userSignedTxn);
+
+        // Sign treasury reward transfer (locally) AFTER user signs
+        if (rewardAxferTxn) {
+          const treasuryAccount = algosdk.mnemonicToSecretKey(
+            this.#treasuryWallet.mnemonic
+          );
+          signed.push(rewardAxferTxn.signTxn(treasuryAccount.sk));
+        }
+      }
+
+      // Send transaction
+      const { txid } = await this.#algodClient.sendRawTransaction(signed).do();
 
       await algosdk.waitForConfirmation(this.#algodClient, txid, 10);
 
