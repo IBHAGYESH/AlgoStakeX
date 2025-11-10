@@ -369,11 +369,12 @@ export class UIManager {
       } catch {}
 
       const itemsHtml = filtered
-        .map(
-          (a) => {
-            // Convert amount to human-readable format using decimals
-            const displayAmount = (a.amount / Math.pow(10, decimals)).toFixed(decimals);
-            return `
+        .map((a) => {
+          // Convert amount to human-readable format using decimals
+          const displayAmount = (a.amount / Math.pow(10, decimals)).toFixed(
+            decimals
+          );
+          return `
         <div class="algox-stakex-asset-item" data-asset-id="${
           a.assetId
         }" data-amount="${a.amount}" data-decimals="${decimals}">
@@ -384,8 +385,7 @@ export class UIManager {
             <div class="algox-stakex-asset-amount">Amount: ${displayAmount}</div>
           </div>
         </div>`;
-          }
-        )
+        })
         .join("");
 
       if (list) list.innerHTML = itemsHtml;
@@ -398,12 +398,12 @@ export class UIManager {
           const amountInput = document.getElementById(
             "algox-stakex-amount-input"
           );
-          
+
           // Deselect all
           document
             .querySelectorAll(".algox-stakex-asset-item")
             .forEach((e2) => e2.classList.remove("selected"));
-          
+
           // If clicking the same item, deselect it
           if (wasSelected) {
             if (amountInput) {
@@ -414,7 +414,7 @@ export class UIManager {
           } else {
             // Select the new item
             el.classList.add("selected");
-            
+
             if (amountInput) {
               amountInput.disabled = false;
               amountInput.value = "";
@@ -784,7 +784,14 @@ export class UIManager {
   /**
    * Render My Staking tab with detailed staking info
    */
-  async renderMyStaking(walletConnected, account, getStakingStatus, poolId, getMetadata, stakingConfig) {
+  async renderMyStaking(
+    walletConnected,
+    account,
+    getStakingStatus,
+    poolId,
+    getMetadata,
+    stakingConfig
+  ) {
     try {
       const summary = document.getElementById("algox-stakex-mystake-summary");
       const withdrawBtn = document.getElementById("algox-stakex-withdraw-btn");
@@ -812,7 +819,7 @@ export class UIManager {
       }
 
       const data = status.stakeData;
-      
+
       // Fetch asset metadata to get decimals
       let decimals = 0;
       try {
@@ -829,7 +836,16 @@ export class UIManager {
       // Calculate current generated reward (simple APY calculation)
       let currentReward = 0;
       if (data.rewardType === "APY" && data.rewardRate > 0) {
-        const stakeDuration = currentTime - data.stakedAt;
+        let stakeDuration = currentTime - data.stakedAt;
+
+        // If stop_reward_on_stake_completion is true, cap duration at stake_period
+        const stopRewardOnCompletion =
+          stakingConfig.reward.stop_reward_on_stake_completion;
+        const stakePeriodSeconds = stakingConfig.stake_period * 60; // convert minutes to seconds
+        if (stopRewardOnCompletion && stakeDuration > stakePeriodSeconds) {
+          stakeDuration = stakePeriodSeconds; // Cap rewards at stake period
+        }
+
         const yearInSeconds = 365 * 24 * 60 * 60;
         // rewardRate is in basis points (10000 = 100%)
         currentReward = Math.floor(
@@ -847,23 +863,48 @@ export class UIManager {
 
       // Calculate total amount (principal + profit) when completed
       const totalAmount = data.amount + currentReward;
-      
+
       // Calculate current withdraw amount (with penalty if applicable)
       let currentWithdrawAmount = data.amount + currentReward;
       let penaltyAmount = 0;
       let hasPenalty = false;
-      
+      let actualPenaltyPercent = 0;
+
       // For flexible staking or if lock is expired, no penalty
       if (data.isFlexible || isLockExpired) {
         hasPenalty = false;
+        // Lock expired or flexible: get principal + rewards
+        currentWithdrawAmount = data.amount + currentReward;
       } else {
-        // For locked staking before expiry, apply penalty
+        // For locked staking before expiry, apply progressive penalty
         hasPenalty = true;
-        const penaltyPercent = stakingConfig?.withdraw_penalty || 5;
-        penaltyAmount = Math.floor((data.amount * penaltyPercent) / 100);
-        currentWithdrawAmount = data.amount - penaltyAmount + currentReward;
+        const configuredPenalty = stakingConfig?.withdraw_penalty || 5;
+
+        // Calculate progressive penalty for FIXED staking (same logic as SDK)
+        actualPenaltyPercent = configuredPenalty;
+        if (stakingConfig.type === "FIXED") {
+          const timeElapsed = currentTime - data.stakedAt;
+          const stakePeriodSeconds = stakingConfig.stake_period * 60;
+          const completionPercentage = Math.min(
+            100,
+            (timeElapsed / stakePeriodSeconds) * 100
+          );
+
+          // Progressive penalty: reduces linearly with time
+          actualPenaltyPercent = Math.floor(
+            configuredPenalty * (1 - completionPercentage / 100)
+          );
+        }
+
+        // Convert penalty percentage to basis points and calculate penalty amount
+        // Contract uses basis points (10000 = 100%), so: 2% = 200 basis points
+        const penaltyBasisPoints = actualPenaltyPercent * 100;
+        penaltyAmount = Math.floor((data.amount * penaltyBasisPoints) / 10000);
+
+        // Emergency withdraw: NO REWARDS, only principal minus penalty
+        currentWithdrawAmount = data.amount - penaltyAmount;
       }
-      
+
       // Determine tier information if tiered rewards (compare using token units)
       let tierInfo = null;
       if (stakingConfig.reward.isTiered) {
@@ -885,7 +926,9 @@ export class UIManager {
 
         if (selectedTier) {
           const next = tiers[selectedIndex + 1] || null;
-          const amountNeeded = next ? Math.max(0, next.stake_amount - currentAmountTokens) : 0;
+          const amountNeeded = next
+            ? Math.max(0, next.stake_amount - currentAmountTokens)
+            : 0;
           tierInfo = {
             name: selectedTier.name,
             index: selectedIndex,
@@ -895,7 +938,10 @@ export class UIManager {
         } else {
           // Not meeting the first tier yet; show progress to the first tier
           const next = tiers[0];
-          const amountNeeded = Math.max(0, next.stake_amount - currentAmountTokens);
+          const amountNeeded = Math.max(
+            0,
+            next.stake_amount - currentAmountTokens
+          );
           tierInfo = {
             name: "No tier",
             index: -1,
@@ -904,13 +950,23 @@ export class UIManager {
           };
         }
       }
-      
+
       // Convert amounts to human-readable format using decimals
-      const displayAmount = (data.amount / Math.pow(10, decimals)).toFixed(decimals);
-      const displayCurrentReward = (currentReward / Math.pow(10, decimals)).toFixed(decimals);
-      const displayTotalAmount = (totalAmount / Math.pow(10, decimals)).toFixed(decimals);
-      const displayCurrentWithdrawAmount = (currentWithdrawAmount / Math.pow(10, decimals)).toFixed(decimals);
-      const displayPenaltyAmount = (penaltyAmount / Math.pow(10, decimals)).toFixed(decimals);
+      const displayAmount = (data.amount / Math.pow(10, decimals)).toFixed(
+        decimals
+      );
+      const displayCurrentReward = (
+        currentReward / Math.pow(10, decimals)
+      ).toFixed(decimals);
+      const displayTotalAmount = (totalAmount / Math.pow(10, decimals)).toFixed(
+        decimals
+      );
+      const displayCurrentWithdrawAmount = (
+        currentWithdrawAmount / Math.pow(10, decimals)
+      ).toFixed(decimals);
+      const displayPenaltyAmount = (
+        penaltyAmount / Math.pow(10, decimals)
+      ).toFixed(decimals);
 
       const infoHtml = `
         <div class="algox-stakex-mystake-info">
@@ -981,7 +1037,9 @@ export class UIManager {
               ? `
           <div class="algox-stakex-mystake-item">
             <span class="algox-stakex-mystake-label">🏆 Current Tier</span>
-            <span class="algox-stakex-mystake-value algox-stakex-mystake-tier">${tierInfo.name}</span>
+            <span class="algox-stakex-mystake-value algox-stakex-mystake-tier">${
+              tierInfo.name
+            }</span>
           </div>
           ${
             tierInfo.nextTier
@@ -989,7 +1047,9 @@ export class UIManager {
           <div class="algox-stakex-mystake-item">
             <span class="algox-stakex-mystake-label">📈 Next Tier</span>
             <span class="algox-stakex-mystake-value">
-              ${tierInfo.nextTier.name} (need ${tierInfo.amountNeeded.toFixed(decimals)} more)
+              ${tierInfo.nextTier.name} (need ${tierInfo.amountNeeded.toFixed(
+                  decimals
+                )} more)
             </span>
           </div>
           `
@@ -1003,44 +1063,34 @@ export class UIManager {
           `
               : ""
           }
-          ${
-            data.rewardType === "APY"
-              ? `
           <div class="algox-stakex-mystake-item">
             <span class="algox-stakex-mystake-label">Current Reward</span>
-            <span class="algox-stakex-mystake-value algox-stakex-mystake-reward">💰 ${displayCurrentReward}</span>
+            <span class="algox-stakex-mystake-value algox-stakex-mystake-reward">${
+              data.rewardType === "APY"
+                ? `💰 ${displayCurrentReward}`
+                : `<span style="color: #888; font-style: italic;">Not Applicable</span>`
+            }</span>
           </div>
-          `
-              : ""
-          }
           <div class="algox-stakex-mystake-item">
-            <span class="algox-stakex-mystake-label">Penalty Amount</span>
-            <span class="algox-stakex-mystake-value ${hasPenalty ? 'algox-stakex-mystake-penalty-amount' : ''}">${hasPenalty ? `-${displayPenaltyAmount}` : '0'}</span>
+            <span class="algox-stakex-mystake-label">${
+              hasPenalty
+                ? `⚠️ Penalty (${actualPenaltyPercent}%${
+                    stakingConfig.type === "FIXED" ? " - Progressive" : ""
+                  })`
+                : "Penalty Amount"
+            }</span>
+            <span class="algox-stakex-mystake-value ${
+              hasPenalty ? "algox-stakex-mystake-penalty-amount" : ""
+            }">${
+        hasPenalty ? `-${displayPenaltyAmount}` : (0).toFixed(decimals)
+      }</span>
           </div>
           <div class="algox-stakex-mystake-item full-width">
             <span class="algox-stakex-mystake-label">💵 Current Withdraw Amount</span>
-            <span class="algox-stakex-mystake-value algox-stakex-mystake-withdraw ${hasPenalty ? 'algox-stakex-mystake-penalty' : ''}">${displayCurrentWithdrawAmount}</span>
+            <span class="algox-stakex-mystake-value algox-stakex-mystake-withdraw ${
+              hasPenalty ? "algox-stakex-mystake-penalty" : ""
+            }">${displayCurrentWithdrawAmount}</span>
           </div>
-          ${
-            hasPenalty
-              ? `
-          <div class="algox-stakex-mystake-item full-width">
-            <span class="algox-stakex-mystake-label">⚠️ Early Withdrawal Penalty (${stakingConfig?.withdraw_penalty || 5}%)</span>
-            <span class="algox-stakex-mystake-value algox-stakex-mystake-penalty-amount">-${displayPenaltyAmount}</span>
-          </div>
-          `
-              : ""
-          }
-          ${
-            isLockExpired && data.rewardType === "APY"
-              ? `
-          <div class="algox-stakex-mystake-item full-width">
-            <span class="algox-stakex-mystake-label">💎 Total Amount (Principal + Profit)</span>
-            <span class="algox-stakex-mystake-value algox-stakex-mystake-total">${displayTotalAmount}</span>
-          </div>
-          `
-              : ""
-          }
         </div>
       `;
 

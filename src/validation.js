@@ -159,6 +159,16 @@ export class Validator {
       throw new Error("reward.value is required");
     }
 
+    // MANDATORY: stop_reward_on_stake_completion
+    if (staking.reward.stop_reward_on_stake_completion === undefined || staking.reward.stop_reward_on_stake_completion === null) {
+      throw new Error("reward.stop_reward_on_stake_completion is mandatory (boolean)");
+    }
+    const stopRewardOnCompletion = Validator.validateBoolean(
+      staking.reward.stop_reward_on_stake_completion,
+      "stop_reward_on_stake_completion",
+      true
+    );
+
     let rewardValue;
     const isTiered = Array.isArray(staking.reward.value);
 
@@ -244,6 +254,7 @@ export class Validator {
         type: rewardType,
         value: rewardValue,
         isTiered,
+        stop_reward_on_stake_completion: stopRewardOnCompletion,
       },
     };
   }

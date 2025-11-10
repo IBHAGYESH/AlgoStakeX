@@ -105,11 +105,11 @@ class AlgoStakeX {
       );
 
       this.#contractApplicationId =
-        this.#network === "mainnet" ? 749398411 : 749398411;
+        this.#network === "mainnet" ? 749424271 : 749424271;
       this.#contractWalletAddress =
         this.#network === "mainnet"
-          ? "L6NNBELLKVLA5JPAB5JK5B33IQIT6QQHS4EQMBOLBSMKBK7XFIENZLKGZQ"
-          : "L6NNBELLKVLA5JPAB5JK5B33IQIT6QQHS4EQMBOLBSMKBK7XFIENZLKGZQ";
+          ? "CYFDD7N7SUSBDS5DS4U3HTFUCL27M2TG2B5G6OS52Y6RJIXU5LXFGUWUGY"
+          : "CYFDD7N7SUSBDS5DS4U3HTFUCL27M2TG2B5G6OS52Y6RJIXU5LXFGUWUGY";
 
       // Initialize SDK variables
       this.#indexerUrl =
@@ -280,7 +280,7 @@ class AlgoStakeX {
           if (isEmergency) {
             await this.emergencyWithdraw(
               this.#namespace,
-              this.#stakingConfig.withdraw_penalty || 5
+              this.#stakingConfig.withdraw_penalty
             );
             this.#uiManager.showToast(
               "Emergency withdraw successful!",
@@ -1152,14 +1152,22 @@ class AlgoStakeX {
         throw new Error("No active stake found");
       }
       const stakeData = decodeStakeData(boxValue.value);
-      console.log("Stake data:", stakeData);
 
       // Compute rewards in base units: amount * rateBP / 10000 * time / YEAR
       const nowSeconds = Math.floor(Date.now() / 1000);
-      const timeStaked = Math.max(
+      let timeStaked = Math.max(
         0,
         nowSeconds - Number(stakeData.stakedAt || 0)
       );
+
+      // If stop_reward_on_stake_completion is true, cap time at stake_period
+      const stopRewardOnCompletion =
+        this.#stakingConfig.reward.stop_reward_on_stake_completion;
+      const stakePeriodSeconds = this.#stakingConfig.stake_period * 60; // convert minutes to seconds
+      if (stopRewardOnCompletion && timeStaked > stakePeriodSeconds) {
+        timeStaked = stakePeriodSeconds; // Cap rewards at stake period
+      }
+
       const YEAR_SECONDS = 365 * 24 * 60 * 60;
       let rewards = 0;
       if (stakeData.rewardType === "APY") {
@@ -1274,6 +1282,138 @@ class AlgoStakeX {
       this.#processing = false;
       eventBus.emit("sdk:processing:stopped", { processing: this.#processing });
       eventBus.emit("withdraw:failed", { error: error.message });
+      throw error;
+    }
+  }
+
+  async emergencyWithdraw(poolId = this.#namespace, penaltyPercentage) {
+    try {
+      if (!this.#walletConnected || !this.account) {
+        throw new Error("Wallet is not connected");
+      }
+
+      this.#processing = true;
+      eventBus.emit("sdk:processing:started", { processing: this.#processing });
+
+      const suggestedParams = await this.#algodClient
+        .getTransactionParams()
+        .do();
+
+      // Get wallet connector
+      let walletConnector;
+      if (this.#mnemonicAccount) {
+        walletConnector = {
+          signTransaction: async (txns) => {
+            return txns.map((txnData) => {
+              const { txn } = txnData;
+              return txn.signTxn(this.#mnemonicAccount.sk);
+            });
+          },
+        };
+      } else {
+        walletConnector = this.#walletConnectors[this.#selectedWalletType];
+        if (!walletConnector) {
+          throw new Error("No wallet connector available");
+        }
+      }
+
+      const emergencyWithdrawMethod = encoder.methods.find(
+        (m) => m.name === "emergencyWithdraw"
+      );
+
+      // Build box reference for stake data
+      const boxName = buildStakeBoxName(poolId, this.account);
+      const stakeBoxRef = {
+        appIndex: this.#contractApplicationId,
+        name: boxName,
+      };
+
+      // Calculate progressive penalty for FIXED staking
+      let finalPenalty = penaltyPercentage;
+      if (this.#stakingConfig.type === "FIXED") {
+        // Read stake data to calculate time elapsed
+        const boxValue = await this.#algodClient
+          .getApplicationBoxByName(this.#contractApplicationId, boxName)
+          .do();
+        if (boxValue && boxValue.value) {
+          const stakeData = decodeStakeData(boxValue.value);
+          const nowSeconds = Math.floor(Date.now() / 1000);
+          const timeElapsed = Math.max(
+            0,
+            nowSeconds - Number(stakeData.stakedAt || 0)
+          );
+          const stakePeriodSeconds = this.#stakingConfig.stake_period * 60;
+
+          // Calculate percentage of stake period completed
+          const completionPercentage = Math.min(
+            100,
+            (timeElapsed / stakePeriodSeconds) * 100
+          );
+
+          // Progressive penalty reduction: penalty reduces linearly with time
+          // If 0% complete: full penalty
+          // If 100% complete: 0% penalty
+          finalPenalty = Math.floor(
+            penaltyPercentage * (1 - completionPercentage / 100)
+          );
+        }
+      }
+
+      // Convert penalty percentage to basis points (contract expects basis points: 100% = 10000)
+      const finalPenaltyBasisPoints = finalPenalty * 100;
+
+      const emergencyWithdrawTxn = algosdk.makeApplicationCallTxnFromObject({
+        sender: this.account,
+        appIndex: this.#contractApplicationId,
+        onComplete: algosdk.OnApplicationComplete.NoOpOC,
+        appArgs: [
+          emergencyWithdrawMethod.getSelector(),
+          algosdk.ABIType.from("string").encode(poolId),
+          algosdk.ABIType.from("uint64").encode(BigInt(finalPenaltyBasisPoints)),
+        ],
+        boxes: [stakeBoxRef],
+        foreignAssets: [Number(this.#tokenId)],
+        suggestedParams: {
+          ...suggestedParams,
+          flatFee: true,
+          fee: 3000,
+        },
+      });
+
+      // Sign and send
+      let signedTxn;
+      if (this.#mnemonicAccount) {
+        signedTxn = [emergencyWithdrawTxn.signTxn(this.#mnemonicAccount.sk)];
+      } else {
+        const signedGroup = await walletConnector.signTransaction([
+          [{ txn: emergencyWithdrawTxn, signers: [this.account] }],
+        ]);
+        signedTxn = Array.isArray(signedGroup[0])
+          ? signedGroup[0]
+          : signedGroup;
+      }
+
+      const { txid } = await this.#algodClient
+        .sendRawTransaction(signedTxn)
+        .do();
+
+      await algosdk.waitForConfirmation(this.#algodClient, txid, 10);
+
+      this.#processing = false;
+      eventBus.emit("sdk:processing:stopped", { processing: this.#processing });
+      eventBus.emit("emergencyWithdraw:success", {
+        transactionId: txid,
+      });
+
+      return {
+        transactionId: txid,
+        poolId,
+      };
+    } catch (error) {
+      console.error("Error emergency withdrawing:", error.message);
+      this.#processing = false;
+      eventBus.emit("sdk:processing:stopped", { processing: this.#processing });
+      eventBus.emit("emergencyWithdraw:failed", { error: error.message });
       throw error;
     }
   }
@@ -1479,104 +1619,6 @@ class AlgoStakeX {
   /**
    * Admin Operations
    */
-
-  async emergencyWithdraw(poolId = this.#namespace, penaltyPercentage = 5) {
-    try {
-      if (!this.#walletConnected || !this.account) {
-        throw new Error("Wallet is not connected");
-      }
-
-      this.#processing = true;
-      eventBus.emit("sdk:processing:started", { processing: this.#processing });
-
-      const suggestedParams = await this.#algodClient
-        .getTransactionParams()
-        .do();
-
-      // Get wallet connector
-      let walletConnector;
-      if (this.#mnemonicAccount) {
-        walletConnector = {
-          signTransaction: async (txns) => {
-            return txns.map((txnData) => {
-              const { txn } = txnData;
-              return txn.signTxn(this.#mnemonicAccount.sk);
-            });
-          },
-        };
-      } else {
-        walletConnector = this.#walletConnectors[this.#selectedWalletType];
-        if (!walletConnector) {
-          throw new Error("No wallet connector available");
-        }
-      }
-
-      const emergencyWithdrawMethod = encoder.methods.find(
-        (m) => m.name === "emergencyWithdraw"
-      );
-
-      // Build box reference for stake data
-      const boxName = buildStakeBoxName(poolId, this.account);
-      const stakeBoxRef = {
-        appIndex: this.#contractApplicationId,
-        name: boxName,
-      };
-
-      const emergencyWithdrawTxn = algosdk.makeApplicationCallTxnFromObject({
-        sender: this.account,
-        appIndex: this.#contractApplicationId,
-        onComplete: algosdk.OnApplicationComplete.NoOpOC,
-        appArgs: [
-          emergencyWithdrawMethod.getSelector(),
-          algosdk.ABIType.from("string").encode(poolId),
-          algosdk.ABIType.from("uint64").encode(BigInt(penaltyPercentage)),
-        ],
-        boxes: [stakeBoxRef],
-        foreignAssets: [Number(this.#tokenId)],
-        suggestedParams: {
-          ...suggestedParams,
-          flatFee: true,
-          fee: 3000,
-        },
-      });
-
-      // Sign and send
-      let signedTxn;
-      if (this.#mnemonicAccount) {
-        signedTxn = [emergencyWithdrawTxn.signTxn(this.#mnemonicAccount.sk)];
-      } else {
-        const signedGroup = await walletConnector.signTransaction([
-          [{ txn: emergencyWithdrawTxn, signers: [this.account] }],
-        ]);
-        signedTxn = Array.isArray(signedGroup[0])
-          ? signedGroup[0]
-          : signedGroup;
-      }
-
-      const { txid } = await this.#algodClient
-        .sendRawTransaction(signedTxn)
-        .do();
-
-      await algosdk.waitForConfirmation(this.#algodClient, txid, 10);
-
-      this.#processing = false;
-      eventBus.emit("sdk:processing:stopped", { processing: this.#processing });
-      eventBus.emit("emergencyWithdraw:success", {
-        transactionId: txid,
-      });
-
-      return {
-        transactionId: txid,
-        poolId,
-      };
-    } catch (error) {
-      console.error("Error emergency withdrawing:", error.message);
-      this.#processing = false;
-      eventBus.emit("sdk:processing:stopped", { processing: this.#processing });
-      eventBus.emit("emergencyWithdraw:failed", { error: error.message });
-      throw error;
-    }
-  }
 
   async addDonation(walletAddress, mnemonic, tokenId, amount) {
     try {
