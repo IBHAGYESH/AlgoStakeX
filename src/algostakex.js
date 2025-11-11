@@ -105,11 +105,11 @@ class AlgoStakeX {
       );
 
       this.#contractApplicationId =
-        this.#network === "mainnet" ? 749424271 : 749424271;
+        this.#network === "mainnet" ? 749429587 : 749429587;
       this.#contractWalletAddress =
         this.#network === "mainnet"
-          ? "CYFDD7N7SUSBDS5DS4U3HTFUCL27M2TG2B5G6OS52Y6RJIXU5LXFGUWUGY"
-          : "CYFDD7N7SUSBDS5DS4U3HTFUCL27M2TG2B5G6OS52Y6RJIXU5LXFGUWUGY";
+          ? "ESEUVKN4EGRLZHQJPS7AH3ITLQMFG3LABXD4VXZVJGHZEZU2JMEMJRA6NU"
+          : "ESEUVKN4EGRLZHQJPS7AH3ITLQMFG3LABXD4VXZVJGHZEZU2JMEMJRA6NU";
 
       // Initialize SDK variables
       this.#indexerUrl =
@@ -1362,6 +1362,13 @@ class AlgoStakeX {
       // Convert penalty percentage to basis points (contract expects basis points: 100% = 10000)
       const finalPenaltyBasisPoints = finalPenalty * 100;
 
+      // Get treasury address for penalty transfer
+      if (!this.#treasuryWallet || !this.#treasuryWallet.address) {
+        throw new Error("Treasury wallet not configured");
+      }
+
+      const treasuryAddress = this.#treasuryWallet.address;
+
       const emergencyWithdrawTxn = algosdk.makeApplicationCallTxnFromObject({
         sender: this.account,
         appIndex: this.#contractApplicationId,
@@ -1369,14 +1376,18 @@ class AlgoStakeX {
         appArgs: [
           emergencyWithdrawMethod.getSelector(),
           algosdk.ABIType.from("string").encode(poolId),
-          algosdk.ABIType.from("uint64").encode(BigInt(finalPenaltyBasisPoints)),
+          algosdk.ABIType.from("uint64").encode(
+            BigInt(finalPenaltyBasisPoints)
+          ),
+          algosdk.ABIType.from("address").encode(treasuryAddress),
         ],
         boxes: [stakeBoxRef],
         foreignAssets: [Number(this.#tokenId)],
+        accounts: [treasuryAddress], // Add treasury as foreign account
         suggestedParams: {
           ...suggestedParams,
           flatFee: true,
-          fee: 3000,
+          fee: 4000, // Increased fee for 2 inner transactions (user + treasury)
         },
       });
 
