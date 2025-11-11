@@ -82,19 +82,25 @@ export class UIManager {
     // ========== SDK-SPECIFIC CONTENT ==========
     const sdkSpecificContent = `
       <div id="algox-stakex-content">
-        <div id="algox-stakex-tabs">
-          <button class="algox-stakex-tab-btn active" data-tab="stake">Stake</button>
-          <button class="algox-stakex-tab-btn" data-tab="mystakes">My Staking</button>
+        <div class="algox-tabs-container">
+          <button class="algox-tab-nav-btn" id="algox-tab-prev" title="Previous tabs">‹</button>
+          <div class="algox-tabs-wrapper">
+            <div class="algox-tabs-track">
+              <button class="algox-tab-btn active" data-tab="stake">Stake</button>
+              <button class="algox-tab-btn" data-tab="mystakes">My Staking</button>
+            </div>
+          </div>
+          <button class="algox-tab-nav-btn" id="algox-tab-next" title="Next tabs">›</button>
         </div>
-        <div id="algox-stakex-tab-content">
-          <div id="algox-stakex-stake-tab" class="algox-stakex-tab-pane">
+        <div class="algox-tab-content">
+          <div id="algox-stakex-stake-tab" class="algox-tab-pane active">
             <div id="algox-stakex-asset-list" class="algox-stakex-asset-list"></div>
             <div class="algox-stakex-row">
               <input type="number" id="algox-stakex-amount-input" placeholder="Amount" disabled />
               <button id="algox-stakex-stake-btn" disabled>Stake</button>
             </div>
           </div>
-          <div id="algox-stakex-mystakes-tab" class="algox-stakex-tab-pane" style="display:none;">
+          <div id="algox-stakex-mystakes-tab" class="algox-tab-pane">
             <div id="algox-stakex-mystake-summary"></div>
             <div class="algox-stakex-row">
               <button id="algox-stakex-withdraw-btn" disabled>Withdraw</button>
@@ -176,29 +182,8 @@ export class UIManager {
         await callbacks.onWalletConnect(walletType);
       });
 
-    // Tabs
-    const container = document.getElementById("algox-sdk-container");
-    container?.querySelectorAll(".algox-stakex-tab-btn").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        const tab = btn.getAttribute("data-tab");
-        // Update active tab styling
-        container
-          .querySelectorAll(".algox-stakex-tab-btn")
-          .forEach((b) => b.classList.remove("active"));
-        btn.classList.add("active");
-
-        container.querySelector("#algox-stakex-stake-tab").style.display =
-          tab === "stake" ? "block" : "none";
-        container.querySelector("#algox-stakex-mystakes-tab").style.display =
-          tab === "mystakes" ? "block" : "none";
-
-        if (tab === "stake") {
-          callbacks.onRenderAssets();
-        } else if (tab === "mystakes") {
-          callbacks.onRenderMyStaking();
-        }
-      });
-    });
+    // Initialize tab system
+    this.#initTabSystem(callbacks);
 
     // Stake actions
     document
@@ -222,6 +207,85 @@ export class UIManager {
         this.showToast("Wallet address copied to clipboard", "success");
       }
     });
+  }
+
+  /**
+   * Initialize common tab system with navigation
+   */
+  #initTabSystem(callbacks) {
+    const container = document.getElementById("algox-sdk-container");
+    const tabsTrack = container?.querySelector(".algox-tabs-track");
+    const tabButtons = container?.querySelectorAll(".algox-tab-btn");
+    const prevBtn = container?.querySelector("#algox-tab-prev");
+    const nextBtn = container?.querySelector("#algox-tab-next");
+
+    if (!tabsTrack || !tabButtons || tabButtons.length === 0) return;
+
+    let currentOffset = 0;
+    const totalTabs = tabButtons.length;
+    const visibleTabs = 2;
+
+    // Hide navigation buttons if only 2 or fewer tabs
+    if (totalTabs <= visibleTabs) {
+      if (prevBtn) prevBtn.style.display = "none";
+      if (nextBtn) nextBtn.style.display = "none";
+    }
+
+    // Update navigation button states
+    const updateNavButtons = () => {
+      if (!prevBtn || !nextBtn || totalTabs <= visibleTabs) return;
+
+      prevBtn.disabled = currentOffset === 0;
+      nextBtn.disabled = currentOffset >= totalTabs - visibleTabs;
+    };
+
+    // Navigate tabs
+    const navigateTabs = (direction) => {
+      if (direction === "prev" && currentOffset > 0) {
+        currentOffset--;
+      } else if (
+        direction === "next" &&
+        currentOffset < totalTabs - visibleTabs
+      ) {
+        currentOffset++;
+      }
+
+      const offset = currentOffset * -50; // Each tab is 50% width
+      tabsTrack.style.transform = `translateX(${offset}%)`;
+      updateNavButtons();
+    };
+
+    // Tab click handlers
+    tabButtons.forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const tab = btn.getAttribute("data-tab");
+
+        // Update active tab styling
+        tabButtons.forEach((b) => b.classList.remove("active"));
+        btn.classList.add("active");
+
+        // Update tab panes
+        const tabPanes = container.querySelectorAll(".algox-tab-pane");
+        tabPanes.forEach((pane) => pane.classList.remove("active"));
+
+        const targetPane = container.querySelector(`#algox-stakex-${tab}-tab`);
+        if (targetPane) targetPane.classList.add("active");
+
+        // Call SDK-specific callbacks
+        if (tab === "stake") {
+          callbacks.onRenderAssets();
+        } else if (tab === "mystakes") {
+          callbacks.onRenderMyStaking();
+        }
+      });
+    });
+
+    // Navigation button handlers
+    prevBtn?.addEventListener("click", () => navigateTabs("prev"));
+    nextBtn?.addEventListener("click", () => navigateTabs("next"));
+
+    // Initialize navigation state
+    updateNavButtons();
   }
 
   /**

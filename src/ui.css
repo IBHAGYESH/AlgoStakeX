@@ -213,12 +213,12 @@
   justify-content: space-between;
   padding: 12px 14px;
   border-bottom: 1px solid #e5e7eb;
-  background-color: #f9fafb;
+  background-color: #f8f9fa;
 }
 
 .dark-theme #algox-header {
-  background-color: #1f2937;
-  border-bottom-color: #374151;
+  background-color: #2d2d2d;
+  border-bottom-color: #444;
 }
 
 #algox-header .header-left {
@@ -251,7 +251,7 @@
 }
 
 #algox-header .header-right button {
-  background: none;
+  background: transparent;
   border: none;
   cursor: pointer;
   padding: 4px 8px;
@@ -267,7 +267,7 @@
 }
 
 #algox-header .header-right button:hover {
-  background-color: rgba(0, 0, 0, 0.08);
+  background-color: rgba(0, 0, 0, 0.05);
 }
 
 .dark-theme #algox-header .header-right button {
@@ -275,7 +275,7 @@
 }
 
 .dark-theme #algox-header .header-right button:hover {
-  background-color: rgba(255, 255, 255, 0.1);
+  background-color: rgba(255, 255, 255, 0.08);
 }
 
 #algox-logout-btn {
@@ -551,29 +551,77 @@
 }
 
 /* ==========================================
-   SDK-SPECIFIC STYLES (ALGOSTAKEX)
+   COMMON TAB UI SYSTEM (ALGOXSUITE STANDARD)
    ========================================== */
 
-#algox-stakex-content {
-  padding: 16px;
-  gap: 12px;
-  display: none;
-  flex-direction: column;
+/* Tab Container */
+.algox-tabs-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-bottom: 2px solid #e5e7eb;
+  padding: 0 16px;
+  margin-top: 12px;
+  position: relative;
 }
 
-#algox-stakex-tabs {
+.dark-theme .algox-tabs-container {
+  border-bottom-color: #444;
+}
+
+/* Tab Navigation Buttons */
+.algox-tab-nav-btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+  color: #6b7280;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  flex-shrink: 0;
+}
+
+.algox-tab-nav-btn:hover:not(:disabled) {
+  background-color: rgba(0, 0, 0, 0.05);
+  color: #111827;
+}
+
+.algox-tab-nav-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.dark-theme .algox-tab-nav-btn {
+  color: #9ca3af;
+}
+
+.dark-theme .algox-tab-nav-btn:hover:not(:disabled) {
+  background-color: rgba(255, 255, 255, 0.08);
+  color: #f9fafb;
+}
+
+/* Tabs Wrapper */
+.algox-tabs-wrapper {
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+}
+
+/* Tabs Track */
+.algox-tabs-track {
   display: flex;
   gap: 6px;
-  border-bottom: 2px solid #e5e7eb;
-  padding-bottom: 8px;
+  transition: transform 0.3s ease;
 }
 
-.dark-theme #algox-stakex-tabs {
-  border-bottom-color: #374151;
-}
-
-.algox-stakex-tab-btn {
-  flex: 1;
+/* Tab Buttons */
+.algox-tab-btn {
+  flex: 0 0 calc(50% - 3px);
+  min-width: calc(50% - 3px);
   padding: 10px;
   border: none;
   background: none;
@@ -582,36 +630,62 @@
   border-bottom: 2px solid transparent;
   font-size: 13px;
   font-weight: 500;
+  transition: all 0.2s;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.algox-stakex-tab-btn:hover {
+.algox-tab-btn:hover {
   color: #111827;
-  background-color: #f9fafb;
+  background-color: rgba(0, 0, 0, 0.03);
 }
 
-.dark-theme .algox-stakex-tab-btn {
+.dark-theme .algox-tab-btn {
   color: #9ca3af;
 }
 
-.dark-theme .algox-stakex-tab-btn:hover {
+.dark-theme .algox-tab-btn:hover {
   color: #f9fafb;
-  background: #1f2937;
+  background: rgba(255, 255, 255, 0.05);
 }
 
-.algox-stakex-tab-btn.active {
+.algox-tab-btn.active {
   color: #3498db;
   border-bottom-color: #3498db;
 }
 
-.dark-theme .algox-stakex-tab-btn.active {
+.dark-theme .algox-tab-btn.active {
   color: #60a5fa;
   border-bottom-color: #60a5fa;
 }
 
-.algox-stakex-tab-pane {
-  margin-top: 16px;
-  display: flex;
+/* Tab Content */
+.algox-tab-content {
+  padding: 16px;
+  overflow-y: auto;
+  flex-grow: 1;
+}
+
+.algox-tab-pane {
+  display: none;
+}
+
+.algox-tab-pane.active {
+  display: block;
+}
+
+/* ==========================================
+   SDK-SPECIFIC STYLES (ALGOSTAKEX)
+   ========================================== */
+
+#algox-stakex-content {
+  padding: 0;
+  gap: 0;
+  display: none;
   flex-direction: column;
+  overflow-y: auto;
+  flex-grow: 1;
 }
 
 #algox-stakex-stake-tab {
@@ -650,7 +724,7 @@
 
 .algox-stakex-asset-item.selected {
   border-color: #3498db;
-  background: linear-gradient(135deg, #eef6fd 0%, #e3f2fd 100%);
+  background: #f0f0f0;
   box-shadow: 0 4px 12px rgba(52, 152, 219, 0.2);
   transform: translateY(-2px);
 }
@@ -702,21 +776,21 @@
 }
 
 .dark-theme .algox-stakex-asset-item {
-  border-color: #374151;
-  background: #1f2937;
+  border-color: #444;
+  background: #2d2d2d;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
 }
 
 .dark-theme .algox-stakex-asset-item:hover {
-  background: #374151;
-  border-color: #60a5fa;
-  box-shadow: 0 4px 6px rgba(96, 165, 250, 0.2);
+  background: #3a3a3a;
+  border-color: #3498db;
+  box-shadow: 0 4px 6px rgba(52, 152, 219, 0.2);
 }
 
 .dark-theme .algox-stakex-asset-item.selected {
-  background: linear-gradient(135deg, #1e3a5f 0%, #1a2f4d 100%);
-  border-color: #60a5fa;
-  box-shadow: 0 4px 12px rgba(96, 165, 250, 0.3);
+  background: #3a3a3a;
+  border-color: #3498db;
+  box-shadow: 0 4px 12px rgba(52, 152, 219, 0.3);
 }
 
 .dark-theme .algox-stakex-asset-name {
@@ -724,7 +798,7 @@
 }
 
 .dark-theme .algox-stakex-asset-amount {
-  background: #374151;
+  background: #3a3a3a;
   color: #d1d5db;
 }
 
@@ -732,8 +806,8 @@
 .dark-theme .algox-stakex-asset-empty,
 .dark-theme .algox-stakex-asset-error {
   color: #9ca3af;
-  background: #1f2937;
-  border-color: #374151;
+  background: #2d2d2d;
+  border-color: #444;
 }
 
 .algox-stakex-row input,
@@ -741,17 +815,19 @@
 .algox-stakex-row button {
   flex: 1;
   padding: 12px 14px;
-  border: 2px solid #d1d5db;
+  border: 2px solid #ddd;
   border-radius: 8px;
   font-size: 14px;
   transition: all 0.3s ease;
+  background: white;
+  color: #111827;
 }
 
 .algox-stakex-row input:focus,
 .algox-stakex-row select:focus {
   outline: none;
   border-color: #3498db;
-  box-shadow: 0 0 0 4px rgba(52, 152, 219, 0.15);
+  box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
   transform: translateY(-1px);
 }
 
@@ -762,42 +838,44 @@
 }
 
 .algox-stakex-row button {
-  background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+  background: #3498db;
   color: white;
   cursor: pointer;
   transition: all 0.3s ease;
   font-weight: 600;
-  border: none;
+  border: 1px solid #3498db;
   box-shadow: 0 2px 4px rgba(52, 152, 219, 0.2);
 }
 
 .algox-stakex-row button:hover:not(:disabled) {
-  background: linear-gradient(135deg, #2980b9 0%, #21618c 100%);
+  background: #2980b9;
+  border-color: #2980b9;
   transform: translateY(-2px);
   box-shadow: 0 4px 8px rgba(52, 152, 219, 0.3);
 }
 
 .dark-theme .algox-stakex-row input,
 .dark-theme .algox-stakex-row select {
-  background: #111827;
-  border-color: #374151;
+  background: #2d2d2d;
+  border-color: #444;
   color: #f9fafb;
 }
 
 .dark-theme .algox-stakex-row button {
-  background: #2563eb;
-  border-color: #2563eb;
-  color: #f9fafb;
+  background: #3498db;
+  border-color: #3498db;
+  color: #ffffff;
 }
 
 .dark-theme .algox-stakex-row input:focus,
 .dark-theme .algox-stakex-row select:focus {
-  border-color: #60a5fa;
-  box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.1);
+  border-color: #3498db;
+  box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
 }
 
 .dark-theme .algox-stakex-row button:hover:not(:disabled) {
-  background: #1d4ed8;
+  background: #2980b9;
+  border-color: #2980b9;
 }
 
 /* Amount input specific styles */
@@ -811,16 +889,16 @@
   grid-template-columns: 1fr 1fr;
   gap: 10px;
   padding: 12px;
-  background: #f9fafb;
+  background: #f8f9fa;
   border-radius: 6px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid #ddd;
   max-height: 320px;
   overflow-y: auto;
 }
 
 .dark-theme .algox-stakex-mystake-info {
-  background: #111827;
-  border-color: #374151;
+  background: #2d2d2d;
+  border-color: #444;
 }
 
 .algox-stakex-mystake-item {
@@ -830,7 +908,7 @@
   padding: 8px;
   background: white;
   border-radius: 4px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid #ddd;
   transition: all 0.2s ease;
 }
 
@@ -840,13 +918,13 @@
 }
 
 .dark-theme .algox-stakex-mystake-item {
-  background: #1f2937;
-  border-color: #374151;
+  background: #3a3a3a;
+  border-color: #444;
 }
 
 .dark-theme .algox-stakex-mystake-item:hover {
-  border-color: #60a5fa;
-  box-shadow: 0 2px 4px rgba(96, 165, 250, 0.1);
+  border-color: #3498db;
+  box-shadow: 0 2px 4px rgba(52, 152, 219, 0.1);
 }
 
 /* Full width items for important fields */
@@ -900,7 +978,7 @@
 }
 
 .dark-theme .algox-stakex-mystake-reward {
-  color: #60a5fa;
+  color: #3498db;
 }
 
 .algox-stakex-mystake-total {
