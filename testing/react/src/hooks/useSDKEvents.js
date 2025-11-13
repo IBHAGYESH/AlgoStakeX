@@ -7,7 +7,23 @@ export const useSDKEvents = (refreshFunctions) => {
   useEffect(() => {
     if (!algoStakeXClient) return;
 
-    const handleWalletConnect = () => {
+    const handleWalletConnect = async () => {
+      // Add treasury wallet when user wallet connects
+      if (algoStakeXClient && algoStakeXClient.addTreasuryWallet) {
+        try {
+          const treasuryAddress = import.meta.env.VITE_TREASURY_ADDRESS;
+          const treasuryMnemonic = import.meta.env.VITE_TREASURY_MNEMONIC;
+          
+          if (treasuryAddress && treasuryMnemonic) {
+            console.log('Adding treasury wallet on wallet connection...');
+            await algoStakeXClient.addTreasuryWallet(treasuryAddress, treasuryMnemonic);
+            console.log('Treasury wallet added successfully on wallet connection');
+          }
+        } catch (error) {
+          console.error('Failed to add treasury wallet on wallet connection:', error);
+        }
+      }
+      
       if (refreshFunctions.onWalletConnect) {
         refreshFunctions.onWalletConnect();
       }

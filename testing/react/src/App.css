@@ -14,3 +14,697 @@
   color: #666;
   font-size: 1.1rem;
 }
+
+/* Enhanced Tier System Styles */
+.tiers-section {
+  margin: 3rem 0;
+  padding: 2rem;
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  border-radius: 16px;
+}
+
+.section-subtitle {
+  text-align: center;
+  color: #64748b;
+  font-size: 1.1rem;
+  margin-bottom: 2rem;
+  max-width: 600px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.tiers-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.5rem;
+  margin-top: 2rem;
+}
+
+.tier-card {
+  background: white;
+  border-radius: 12px;
+  padding: 1.5rem;
+  border: 2px solid #e5e7eb;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.tier-card.unlocked {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+}
+
+.tier-card.current {
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.15);
+  transform: translateY(-4px);
+}
+
+.tier-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.tier-icon {
+  font-size: 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.tier-name {
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.current-badge {
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: white;
+  font-size: 0.7rem;
+  padding: 0.2rem 0.5rem;
+  border-radius: 6px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+.tier-requirement {
+  color: #6b7280;
+  font-size: 0.9rem;
+  margin: 0.25rem 0 0 0;
+}
+
+.tier-benefits {
+  margin: 1rem 0;
+}
+
+.benefit-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0.5rem 0;
+  font-size: 0.9rem;
+}
+
+.tier-progress {
+  margin-top: 1rem;
+}
+
+.progress-bar {
+  background: #f3f4f6;
+  border-radius: 6px;
+  height: 6px;
+  overflow: hidden;
+  margin-bottom: 0.5rem;
+}
+
+.progress-fill {
+  height: 100%;
+  border-radius: 6px;
+  transition: width 0.3s ease;
+}
+
+.progress-text {
+  font-size: 0.8rem;
+  color: #6b7280;
+  text-align: center;
+  margin: 0;
+}
+
+/* Enhanced Access Badge */
+.access-badge {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem 1.5rem;
+  border-radius: 12px;
+  font-weight: 600;
+  margin: 1rem 0;
+  justify-content: center;
+  backdrop-filter: blur(10px);
+}
+
+/* Tier Benefit Badge on Game Cards */
+.tier-benefit-badge {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+  color: white;
+  padding: 0.5rem 0.75rem;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  margin-top: 0.75rem;
+}
+
+/* Enhanced Stats Section */
+.stats-section {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1.5rem;
+  margin: 2rem 0;
+}
+
+.stat-card {
+  background: white;
+  padding: 1.5rem;
+  border-radius: 12px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  transition: transform 0.2s ease;
+}
+
+.stat-card:hover {
+  transform: translateY(-2px);
+}
+
+.stat-icon {
+  font-size: 2rem;
+  color: #8b5cf6;
+}
+
+.stat-content h3 {
+  margin: 0 0 0.5rem 0;
+  color: #374151;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.stat-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #1f2937;
+  margin: 0;
+}
+
+/* Enhanced Game Cards */
+.game-card {
+  background: white;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+  transition: all 0.3s ease;
+}
+
+.game-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 25px rgba(0, 0, 0, 0.1);
+}
+
+.game-info {
+  padding: 1.5rem;
+}
+
+.game-name {
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin: 0 0 0.5rem 0;
+  color: #1f2937;
+}
+
+.game-description {
+  color: #6b7280;
+  font-size: 0.9rem;
+  margin: 0 0 1rem 0;
+  line-height: 1.5;
+}
+
+.game-stats {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.game-stat {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.8rem;
+  color: #6b7280;
+}
+
+.game-stat svg {
+  font-size: 1rem;
+}
+
+/* Staking Notification Enhancement */
+.stacking-notification {
+  background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+  color: white;
+  padding: 1.5rem;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 2rem 0;
+  box-shadow: 0 8px 25px rgba(139, 92, 246, 0.3);
+}
+
+.notification-content {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.notification-content h4 {
+  margin: 0 0 0.25rem 0;
+  font-size: 1.1rem;
+}
+
+.notification-content p {
+  margin: 0;
+  opacity: 0.9;
+}
+
+.tier-benefits-summary {
+  font-size: 0.85rem;
+  opacity: 0.8;
+  margin-top: 0.25rem !important;
+}
+
+/* Hero Section Enhancement */
+.hero-section {
+  text-align: center;
+  padding: 3rem 0;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border-radius: 16px;
+  margin-bottom: 2rem;
+}
+
+.hero-section h1 {
+  font-size: 2.5rem;
+  font-weight: 800;
+  margin: 0 0 1rem 0;
+}
+
+.hero-subtitle {
+  font-size: 1.2rem;
+  opacity: 0.9;
+  margin: 0 0 2rem 0;
+  max-width: 600px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.btn-large {
+  padding: 1rem 2rem;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.access-prompt {
+  background: rgba(255, 255, 255, 0.1);
+  padding: 1.5rem;
+  border-radius: 12px;
+  backdrop-filter: blur(10px);
+}
+
+.access-prompt p {
+  margin: 0 0 1rem 0;
+  font-size: 1.1rem;
+}
+
+/* Enhanced Feature Page Styles */
+.tiers-showcase {
+  margin: 3rem 0;
+  padding: 2rem;
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  border-radius: 16px;
+}
+
+.tier-showcase-card {
+  background: white;
+  border-radius: 16px;
+  padding: 2rem;
+  border: 2px solid #e5e7eb;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.tier-showcase-card.unlocked {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+}
+
+.tier-showcase-card.current {
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.15);
+  transform: translateY(-4px);
+}
+
+.tier-showcase-card.next {
+  border-style: dashed;
+  border-width: 2px;
+}
+
+.tier-showcase-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.tier-showcase-icon {
+  font-size: 2.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.tier-showcase-name {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.current-tier-badge {
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: white;
+  font-size: 0.7rem;
+  padding: 0.25rem 0.75rem;
+  border-radius: 12px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+.next-tier-badge {
+  background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+  color: white;
+  font-size: 0.7rem;
+  padding: 0.25rem 0.75rem;
+  border-radius: 12px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+.tier-showcase-requirement {
+  color: #6b7280;
+  font-size: 0.9rem;
+  margin: 0.5rem 0 0 0;
+}
+
+.tier-showcase-features h4 {
+  color: #374151;
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 1.5rem 0 1rem 0;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.tier-feature-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  margin: 1rem 0;
+  padding: 0.75rem;
+  background: #f9fafb;
+  border-radius: 8px;
+  border: 1px solid #f3f4f6;
+}
+
+.feature-icon-small {
+  font-size: 1.25rem;
+  margin-top: 0.125rem;
+}
+
+.feature-details {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.feature-name {
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.feature-description {
+  font-size: 0.8rem;
+  line-height: 1.4;
+}
+
+.tier-exclusives {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.exclusive-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  padding: 0.25rem 0;
+}
+
+.tier-progress-section {
+  margin-top: 1.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid #e5e7eb;
+}
+
+.tier-progress-bar {
+  background: #f3f4f6;
+  border-radius: 6px;
+  height: 8px;
+  overflow: hidden;
+  margin-bottom: 0.75rem;
+}
+
+.tier-progress-fill {
+  height: 100%;
+  border-radius: 6px;
+  transition: width 0.3s ease;
+}
+
+.tier-progress-text {
+  font-size: 0.8rem;
+  color: #6b7280;
+  text-align: center;
+  margin: 0;
+}
+
+.upgrade-section {
+  margin-top: 1.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid #e5e7eb;
+  text-align: center;
+}
+
+.upgrade-btn {
+  padding: 0.75rem 1.5rem;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+}
+
+.upgrade-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+}
+
+/* Current Benefits Section */
+.current-benefits {
+  margin: 3rem 0;
+  padding: 2rem;
+  background: linear-gradient(135deg, #ecfdf5, #d1fae5);
+  border-radius: 16px;
+  border: 1px solid #10b981;
+}
+
+.benefits-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1.5rem;
+  margin-top: 2rem;
+}
+
+.benefit-card {
+  background: white;
+  border-radius: 12px;
+  padding: 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+  border: 1px solid #d1fae5;
+  transition: transform 0.2s;
+}
+
+.benefit-card:hover {
+  transform: translateY(-2px);
+}
+
+.benefit-icon {
+  font-size: 1.5rem;
+  color: #10b981;
+  background: rgba(16, 185, 129, 0.1);
+  padding: 0.75rem;
+  border-radius: 8px;
+}
+
+.benefit-content {
+  flex: 1;
+}
+
+.benefit-name {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #374151;
+  margin: 0 0 0.25rem 0;
+}
+
+.benefit-description {
+  font-size: 0.85rem;
+  color: #6b7280;
+  margin: 0;
+  line-height: 1.4;
+}
+
+.benefit-status {
+  font-size: 1.25rem;
+}
+
+/* Enhanced Stacking Info Card */
+.stacking-info-card {
+  background: white;
+  border-radius: 16px;
+  padding: 2rem;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+  border: 1px solid #e5e7eb;
+  margin: 2rem 0;
+}
+
+.stacking-info-card h3 {
+  color: #374151;
+  font-size: 1.25rem;
+  margin-bottom: 1.5rem;
+}
+
+.tier-summary {
+  margin-top: 2rem;
+  padding: 1.5rem;
+  background: #f9fafb;
+  border-radius: 12px;
+  border: 1px solid #e5e7eb;
+}
+
+.tier-summary-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.tier-summary-icon {
+  font-size: 2rem;
+}
+
+.tier-summary h4 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin: 0 0 0.25rem 0;
+}
+
+.tier-summary p {
+  color: #6b7280;
+  font-size: 0.9rem;
+  margin: 0;
+}
+
+.next-tier-preview {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  background: white;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  margin-top: 1rem;
+}
+
+.next-tier-preview p {
+  color: #374151;
+  font-size: 0.9rem;
+  margin: 0;
+}
+
+.access-badge-large {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1.5rem 2rem;
+  border-radius: 16px;
+  font-weight: 600;
+  font-size: 1.1rem;
+  margin: 1.5rem 0;
+  justify-content: center;
+  backdrop-filter: blur(10px);
+  color: white;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .tiers-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .stats-section {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .hero-section h1 {
+    font-size: 2rem;
+  }
+  
+  .tier-header {
+    flex-direction: column;
+    text-align: center;
+    gap: 0.5rem;
+  }
+  
+  .tier-showcase-header {
+    flex-direction: column;
+    text-align: center;
+    gap: 0.75rem;
+  }
+  
+  .benefits-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .benefit-card {
+    flex-direction: column;
+    text-align: center;
+  }
+  
+  .next-tier-preview {
+    flex-direction: column;
+    gap: 1rem;
+    text-align: center;
+  }
+  
+  .tier-summary-header {
+    flex-direction: column;
+    text-align: center;
+    gap: 0.75rem;
+  }
+}

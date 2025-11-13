@@ -5,32 +5,63 @@ let sdkInstance = null;
 
 export function useSDK() {
   const [algoStakeXClient, setAlgoStakeXClient] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [treasuryConfigured, setTreasuryConfigured] = useState(false);
 
   const initializeSDK = useCallback(() => {
     if (window.AlgoStakeX && !sdkInstance) {
       try {
-        // Initialize SDK with required parameters
+        // Initialize SDK with enhanced tiered utility rewards
         sdkInstance = new window.AlgoStakeX({
           env: "testnet", // testnet | mainnet
-          namespace: "STAKX", // unique namespace
-          token_id: 749059499, // ASA ID - replace with actual token ID
+          namespace: "GAMEX", // unique namespace for gaming platform
+          token_id: 749398662, // ASA ID - replace with actual token ID
           enable_ui: true,
           disableToast: false,
           toastLocation: "TOP_RIGHT", // TOP_LEFT | TOP_RIGHT
           minimizeUILocation: "right", // left | right
           logo: "./logo.png", // your website logo (URL / path to image)
           staking: {
-            type: "FLEXIBLE", // FLEXIBLE | FIXED
-            stake_period: 1440, // optional for FLEXIBLE (in minutes)
-            withdraw_penalty: 5, // optional for FLEXIBLE (percentage)
+            type: "FIXED", // FLEXIBLE | FIXED
+            stake_period: 10080, // 7 days in minutes
+            withdraw_penalty: 1, // 1% penalty for early withdrawal
             reward: {
               type: "UTILITY", // APY | UTILITY
-              value: "Feature", // 5% APY or "feature 1,2" for UTILITY
+              stop_reward_on_stake_completion: false, // Allow ongoing rewards
+              value: [
+                {
+                  name: "Explorer", // Starter tier
+                  stake_amount: 10, // required
+                  value: "Basic Game Access + Daily Rewards + Community Chat", // utility features
+                },
+                {
+                  name: "Adventurer", // Mid tier
+                  stake_amount: 30, // required
+                  value:
+                    "All Explorer Benefits + Premium Game Modes + Priority Matchmaking + Exclusive Events", // enhanced features
+                },
+                {
+                  name: "Champion", // High tier
+                  stake_amount: 50, // required
+                  value:
+                    "All Adventurer Benefits + VIP Support + Beta Access + Custom Avatar + Leaderboard Highlights", // premium features
+                },
+                {
+                  name: "Legend", // Ultimate tier
+                  stake_amount: 60, // required
+                  value:
+                    "All Champion Benefits + Private Tournaments + NFT Rewards + Developer Access + Revenue Sharing", // ultimate features
+                },
+              ],
             },
           },
         });
 
         setAlgoStakeXClient(sdkInstance);
+        console.log("AlgoStakeX SDK initialized");
+        
+        // Set up treasury wallet configuration
+        setupTreasuryWallet(sdkInstance);
       } catch (error) {
         console.error("SDK initialization error:", error);
       }
@@ -39,6 +70,53 @@ export function useSDK() {
       setAlgoStakeXClient(sdkInstance);
     }
   }, []);
+
+  // Function to set up treasury wallet
+  const setupTreasuryWallet = async (client) => {
+    try {
+      const treasuryAddress = import.meta.env.VITE_TREASURY_ADDRESS;
+      const treasuryMnemonic = import.meta.env.VITE_TREASURY_MNEMONIC;
+      
+      if (treasuryAddress && treasuryMnemonic) {
+        console.log('Setting up treasury wallet...');
+        await client.addTreasuryWallet(treasuryAddress, treasuryMnemonic);
+        setTreasuryConfigured(true);
+        console.log('Treasury wallet configured successfully');
+      } else {
+        console.warn('Treasury wallet credentials not found in environment variables');
+        console.warn('Please set VITE_TREASURY_ADDRESS and VITE_TREASURY_MNEMONIC in your .env file');
+      }
+    } catch (error) {
+      console.error('Failed to configure treasury wallet:', error);
+    }
+  };
+
+  // Function to manually add treasury wallet (can be called when wallet connects)
+  const addTreasuryWallet = async () => {
+    if (!algoStakeXClient) {
+      console.error('SDK not initialized');
+      return false;
+    }
+
+    try {
+      const treasuryAddress = import.meta.env.VITE_TREASURY_ADDRESS;
+      const treasuryMnemonic = import.meta.env.VITE_TREASURY_MNEMONIC;
+      
+      if (treasuryAddress && treasuryMnemonic) {
+        console.log('Adding treasury wallet...');
+        await algoStakeXClient.addTreasuryWallet(treasuryAddress, treasuryMnemonic);
+        setTreasuryConfigured(true);
+        console.log('Treasury wallet added successfully');
+        return true;
+      } else {
+        console.error('Treasury wallet credentials not found in environment variables');
+        return false;
+      }
+    } catch (error) {
+      console.error('Failed to add treasury wallet:', error);
+      return false;
+    }
+  };
 
   useEffect(() => {
     let intervalId;
@@ -61,5 +139,5 @@ export function useSDK() {
     };
   }, [initializeSDK]);
 
-  return { algoStakeXClient };
+  return { algoStakeXClient, isLoading, treasuryConfigured, addTreasuryWallet };
 }
