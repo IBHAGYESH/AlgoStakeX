@@ -1,30 +1,11 @@
 import React, { useState } from 'react';
-import { Users, Search, Filter, ExternalLink, Award } from 'lucide-react';
+import { Users, Search, Award } from 'lucide-react';
 
 const StakersList = ({ stakers }) => {
   const [searchTerm, setSearchTerm] = useState('');
-  const [filterTier, setFilterTier] = useState('All');
-  const [sortBy, setSortBy] = useState('stakedAmount');
-  const [sortOrder, setSortOrder] = useState('desc');
 
-  const getTierColor = (tier) => {
-    const colors = {
-      Bronze: '#CD7F32',
-      Silver: '#C0C0C0',
-      Gold: '#FFD700',
-      Platinum: '#E5E4E2'
-    };
-    return colors[tier] || '#94a3b8';
-  };
-
-  const getTierIcon = (tier) => {
-    switch(tier) {
-      case 'Bronze': return '🥉';
-      case 'Silver': return '🥈';
-      case 'Gold': return '🥇';
-      case 'Platinum': return '💎';
-      default: return '⭐';
-    }
+  const handleSearchClick = () => {
+    // No-op: list filters as you type, button kept for UX consistency
   };
 
   const formatAddress = (address) => {
@@ -40,35 +21,8 @@ const StakersList = ({ stakers }) => {
   };
 
   const filteredStakers = stakers
-    .filter(staker => {
-      const matchesSearch = staker.address.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesTier = filterTier === 'All' || staker.tier === filterTier;
-      return matchesSearch && matchesTier;
-    })
-    .sort((a, b) => {
-      let aValue = a[sortBy];
-      let bValue = b[sortBy];
-      
-      if (sortBy === 'joinDate') {
-        aValue = new Date(aValue);
-        bValue = new Date(bValue);
-      }
-      
-      if (sortOrder === 'asc') {
-        return aValue > bValue ? 1 : -1;
-      } else {
-        return aValue < bValue ? 1 : -1;
-      }
-    });
-
-  const handleSort = (field) => {
-    if (sortBy === field) {
-      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
-    } else {
-      setSortBy(field);
-      setSortOrder('desc');
-    }
-  };
+    .filter(staker => staker.address.toLowerCase().includes(searchTerm.toLowerCase()))
+    .sort((a, b) => b.stakedAmount - a.stakedAmount);
 
   return (
     <section className="stakers-list">
@@ -94,166 +48,47 @@ const StakersList = ({ stakers }) => {
               className="search-input"
             />
           </div>
-          
-          <div className="filter-container">
-            <Filter className="filter-icon" />
-            <select
-              value={filterTier}
-              onChange={(e) => setFilterTier(e.target.value)}
-              className="filter-select"
-            >
-              <option value="All">All Tiers</option>
-              <option value="Bronze">Bronze</option>
-              <option value="Silver">Silver</option>
-              <option value="Gold">Gold</option>
-              <option value="Platinum">Platinum</option>
-            </select>
-          </div>
+          <button className="search-btn" onClick={handleSearchClick}>Search</button>
         </div>
       </div>
 
-      <div className="stakers-table-container">
-        <table className="stakers-table">
-          <thead>
-            <tr>
-              <th>Rank</th>
-              <th 
-                className={`sortable ${sortBy === 'address' ? 'active' : ''}`}
-                onClick={() => handleSort('address')}
-              >
-                Address
-                {sortBy === 'address' && (
-                  <span className="sort-indicator">
-                    {sortOrder === 'asc' ? '↑' : '↓'}
-                  </span>
+      <div className="staker-cards">
+        {filteredStakers.map((staker, index) => (
+          <div className="staker-card" key={staker.id}>
+            <div className="staker-card-header">
+              <div className="rank-container">
+                {index + 1 <= 3 && (
+                  <Award size={16} className={`rank-icon rank-${index + 1}`} />
                 )}
-              </th>
-              <th 
-                className={`sortable ${sortBy === 'stakedAmount' ? 'active' : ''}`}
-                onClick={() => handleSort('stakedAmount')}
-              >
-                Staked Amount
-                {sortBy === 'stakedAmount' && (
-                  <span className="sort-indicator">
-                    {sortOrder === 'asc' ? '↑' : '↓'}
-                  </span>
-                )}
-              </th>
-              <th 
-                className={`sortable ${sortBy === 'rewards' ? 'active' : ''}`}
-                onClick={() => handleSort('rewards')}
-              >
-                Rewards
-                {sortBy === 'rewards' && (
-                  <span className="sort-indicator">
-                    {sortOrder === 'asc' ? '↑' : '↓'}
-                  </span>
-                )}
-              </th>
-              <th 
-                className={`sortable ${sortBy === 'tier' ? 'active' : ''}`}
-                onClick={() => handleSort('tier')}
-              >
-                Tier
-                {sortBy === 'tier' && (
-                  <span className="sort-indicator">
-                    {sortOrder === 'asc' ? '↑' : '↓'}
-                  </span>
-                )}
-              </th>
-              <th 
-                className={`sortable ${sortBy === 'joinDate' ? 'active' : ''}`}
-                onClick={() => handleSort('joinDate')}
-              >
-                Join Date
-                {sortBy === 'joinDate' && (
-                  <span className="sort-indicator">
-                    {sortOrder === 'asc' ? '↑' : '↓'}
-                  </span>
-                )}
-              </th>
-              <th>Status</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredStakers.map((staker, index) => (
-              <tr key={staker.id} className="staker-row">
-                <td className="rank-cell">
-                  <div className="rank-container">
-                    {index + 1 <= 3 && (
-                      <Award 
-                        size={16} 
-                        className={`rank-icon rank-${index + 1}`}
-                      />
-                    )}
-                    <span className="rank-number">#{index + 1}</span>
-                  </div>
-                </td>
-                <td className="address-cell">
-                  <div className="address-container">
-                    <code className="address-text">
-                      {formatAddress(staker.address)}
-                    </code>
-                    <button 
-                      className="copy-btn"
-                      onClick={() => navigator.clipboard.writeText(staker.address)}
-                      title="Copy full address"
-                    >
-                      📋
-                    </button>
-                  </div>
-                </td>
-                <td className="amount-cell">
-                  <div className="amount-container">
-                    <span className="amount-value">
-                      {staker.stakedAmount.toLocaleString()}
-                    </span>
-                    <span className="amount-label">tokens</span>
-                  </div>
-                </td>
-                <td className="rewards-cell">
-                  <div className="rewards-container">
-                    <span className="rewards-value">
-                      {staker.rewards.toLocaleString()}
-                    </span>
-                    <span className="rewards-label">earned</span>
-                  </div>
-                </td>
-                <td className="tier-cell">
-                  <div 
-                    className="tier-badge"
-                    style={{ 
-                      backgroundColor: `${getTierColor(staker.tier)}20`,
-                      borderColor: getTierColor(staker.tier),
-                      color: getTierColor(staker.tier)
-                    }}
-                  >
-                    <span className="tier-icon">{getTierIcon(staker.tier)}</span>
-                    <span className="tier-name">{staker.tier}</span>
-                  </div>
-                </td>
-                <td className="date-cell">
-                  {formatDate(staker.joinDate)}
-                </td>
-                <td className="status-cell">
-                  <div className={`status-badge ${staker.status.toLowerCase()}`}>
-                    <div className="status-indicator"></div>
-                    <span>{staker.status}</span>
-                  </div>
-                </td>
-                <td className="actions-cell">
-                  <button 
-                    className="action-btn"
-                    title="View on explorer"
-                  >
-                    <ExternalLink size={14} />
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+                <span className="rank-number">#{index + 1}</span>
+              </div>
+              <div className="address-container">
+                <code className="address-text">{formatAddress(staker.address)}</code>
+                <button
+                  className="copy-btn"
+                  onClick={() => navigator.clipboard.writeText(staker.address)}
+                  title="Copy full address"
+                >
+                  📋
+                </button>
+              </div>
+            </div>
+            <div className="staker-card-body">
+              <div className="metric">
+                <div className="metric-label">Staked Amount</div>
+                <div className="metric-value">{staker.stakedAmount.toLocaleString()} tokens</div>
+              </div>
+              <div className="metric">
+                <div className="metric-label">Rewards</div>
+                <div className="metric-value">{staker.rewards.toLocaleString()}</div>
+              </div>
+              <div className="metric">
+                <div className="metric-label">Join Date</div>
+                <div className="metric-value">{formatDate(staker.joinDate)}</div>
+              </div>
+            </div>
+          </div>
+        ))}
       </div>
     </section>
   );

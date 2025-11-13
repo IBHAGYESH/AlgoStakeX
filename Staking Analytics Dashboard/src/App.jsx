@@ -126,6 +126,14 @@ function App() {
     fetchTotalPools();
   }, [algorandService]);
 
+  // Periodically refresh total active pools in background
+  useEffect(() => {
+    const id = setInterval(() => {
+      fetchTotalPools();
+    }, 60000);
+    return () => clearInterval(id);
+  }, [algorandService]);
+
   return (
     <div className={`app ${theme}`}>
       {/* Header */}
@@ -258,41 +266,45 @@ function App() {
                       <span>{poolData.status}</span>
                     </div>
                   </div>
-                  <div className="pool-stats">
-                    <div className="stat-card">
-                      <DollarSign className="stat-icon" />
-                      <div className="stat-content">
-                        <div className="stat-value">${poolData.totalValue?.toLocaleString() || '0'}</div>
-                        <div className="stat-label">Total Value Locked</div>
-                      </div>
+                </div>
+              </section>
+
+              {/* Metrics Chips */}
+              <section className="chips-section">
+                <div className="chips-grid">
+                  <div className="chip-card">
+                    <DollarSign className="chip-icon" />
+                    <div className="chip-content">
+                      <div className="chip-value">${poolData.totalValue?.toLocaleString() || '0'}</div>
+                      <div className="chip-label">Total Value Locked</div>
                     </div>
-                    <div className="stat-card">
-                      <Users className="stat-icon" />
-                      <div className="stat-content">
-                        <div className="stat-value">{poolData.totalStakers || 0}</div>
-                        <div className="stat-label">Total Stakers</div>
-                      </div>
+                  </div>
+                  <div className="chip-card">
+                    <Users className="chip-icon" />
+                    <div className="chip-content">
+                      <div className="chip-value">{poolData.totalStakers || 0}</div>
+                      <div className="chip-label">Total Stakers</div>
                     </div>
-                    <div className="stat-card">
-                      <TrendingUp className="stat-icon" />
-                      <div className="stat-content">
-                        <div className="stat-value">{poolData.apy?.toFixed(2) || '0'}%</div>
-                        <div className="stat-label">APY</div>
-                      </div>
+                  </div>
+                  <div className="chip-card">
+                    <TrendingUp className="chip-icon" />
+                    <div className="chip-content">
+                      <div className="chip-value">{poolData.apy?.toFixed(2) || '0'}%</div>
+                      <div className="chip-label">APY</div>
                     </div>
-                    <div className="stat-card">
-                      <DollarSign className="stat-icon" />
-                      <div className="stat-content">
-                        <div className="stat-value">${poolData.totalRewards?.toLocaleString() || '0'}</div>
-                        <div className="stat-label">Total Rewards</div>
-                      </div>
+                  </div>
+                  <div className="chip-card">
+                    <DollarSign className="chip-icon" />
+                    <div className="chip-content">
+                      <div className="chip-value">${poolData.totalRewards?.toLocaleString() || '0'}</div>
+                      <div className="chip-label">Total Rewards</div>
                     </div>
-                    <div className="stat-card">
-                      <Activity className="stat-icon" />
-                      <div className="stat-content">
-                        <div className="stat-value">{poolData.avgStakingTime || '0'} days</div>
-                        <div className="stat-label">Avg Staking Time</div>
-                      </div>
+                  </div>
+                  <div className="chip-card">
+                    <Activity className="chip-icon" />
+                    <div className="chip-content">
+                      <div className="chip-value">{poolData.avgStakingTime || '0'} days</div>
+                      <div className="chip-label">Avg Staking Time</div>
                     </div>
                   </div>
                 </div>
@@ -309,12 +321,16 @@ function App() {
                     <h4>Stakers Growth</h4>
                     <StakersChart data={stakingHistory} />
                   </div>
+                  <div className="chart-card">
+                    <h4>Total Rewards by Date</h4>
+                    <RewardsChart data={stakingHistory} />
+                  </div>
                 </div>
               </section>
 
               {/* Pool Metrics */}
               <section className="metrics-section">
-                <PoolMetrics poolData={poolData} stakers={stakers} />
+                <PoolMetrics poolData={poolData} stakers={stakers} stakingHistory={stakingHistory} loading={loading} />
               </section>
 
               {/* Stakers List */}
@@ -334,6 +350,31 @@ function App() {
               </div>
             </section>
           )}
+
+          {/* Loading Skeletons */}
+          {loading && (
+            <>
+              <section className="pool-overview">
+                <div className="skeleton skeleton-title" />
+                <div className="skeleton skeleton-badge" />
+              </section>
+              <section className="chips-section">
+                <div className="chips-grid">
+                  <div className="chip-card skeleton" />
+                  <div className="chip-card skeleton" />
+                  <div className="chip-card skeleton" />
+                  <div className="chip-card skeleton" />
+                  <div className="chip-card skeleton" />
+                </div>
+              </section>
+              <section className="charts-section">
+                <div className="charts-grid">
+                  <div className="chart-card skeleton-chart" />
+                  <div className="chart-card skeleton-chart" />
+                </div>
+              </section>
+            </>
+          )}
         </div>
       </main>
 
@@ -346,10 +387,10 @@ function App() {
                 <TrendingUp size={20} />
                 <span>AlgoStakeX Analytics Dashboard</span>
               </div>
-              <p>Real-time staking pool analytics for the Algorand blockchain ecosystem.</p>
+              <p>Real-time staking pool analytics for the AlgoStakeX SDK</p>
             </div>
             <div className="footer-links">
-              <a href="https://github.com/algoxsuite/algostakex" target="_blank" rel="noopener noreferrer" className="footer-link">
+              <a href="https://github.com/IBHAGYESH/AlgoStakeX" target="_blank" rel="noopener noreferrer" className="footer-link">
                 <Github size={16} />
                 GitHub Repository
               </a>

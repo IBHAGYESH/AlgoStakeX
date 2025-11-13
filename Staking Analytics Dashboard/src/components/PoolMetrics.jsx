@@ -1,5 +1,4 @@
 import React from 'react';
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
 
 const PoolMetrics = ({ poolData, stakingHistory, stakers }) => {
   const COLORS = {
@@ -83,166 +82,33 @@ const PoolMetrics = ({ poolData, stakingHistory, stakers }) => {
 
   return (
     <section className="pool-metrics">
-      <h3 className="section-title">Pool Analytics</h3>
-      
-      <div className="metrics-charts-grid">
-        {/* Staking Distribution by Tier */}
-        <div className="metric-chart-card">
-          <h4>Staking Distribution by Tier</h4>
-          <div style={{ width: '100%', height: '250px' }}>
-            <ResponsiveContainer>
-              <PieChart>
-                <Pie
-                  data={getStakingDistribution()}
-                  cx="50%"
-                  cy="50%"
-                  labelLine={false}
-                  label={renderCustomizedLabel}
-                  outerRadius={80}
-                  fill="#8884d8"
-                  dataKey="count"
-                >
-                  {getStakingDistribution().map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[entry.tier]} />
-                  ))}
-                </Pie>
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: 'rgba(15, 23, 42, 0.95)',
-                    border: '1px solid rgba(255, 255, 255, 0.1)',
-                    borderRadius: '8px',
-                    color: '#f8fafc'
-                  }}
-                  formatter={(value, name, props) => [
-                    `${value} stakers (${props.payload.percentage}%)`,
-                    props.payload.tier
-                  ]}
-                />
-                <Legend 
-                  wrapperStyle={{ color: '#f8fafc' }}
-                  formatter={(value, entry) => (
-                    <span style={{ color: entry.color }}>{value}</span>
-                  )}
-                />
-              </PieChart>
-            </ResponsiveContainer>
+      <h3 className="section-title">Key Statistics</h3>
+      <div className="metric-stats-card">
+        <h4>Key Statistics</h4>
+        <div className="stats-list">
+          <div className="stat-row">
+            <span className="stat-label">Average Stake Size</span>
+            <span className="stat-value">{poolData?.averageStake?.toFixed(2) || '0'} ALGO</span>
           </div>
-        </div>
-
-        {/* Rewards Distribution */}
-        <div className="metric-chart-card">
-          <h4>Rewards Distribution</h4>
-          <div style={{ width: '100%', height: '250px' }}>
-            <ResponsiveContainer>
-              <PieChart>
-                <Pie
-                  data={getRewardDistribution()}
-                  cx="50%"
-                  cy="50%"
-                  labelLine={false}
-                  label={renderCustomizedLabel}
-                  outerRadius={80}
-                  fill="#8884d8"
-                  dataKey="amount"
-                >
-                  {getRewardDistribution().map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={REWARD_COLORS[index]} />
-                  ))}
-                </Pie>
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: 'rgba(15, 23, 42, 0.95)',
-                    border: '1px solid rgba(255, 255, 255, 0.1)',
-                    borderRadius: '8px',
-                    color: '#f8fafc'
-                  }}
-                  formatter={(value, name, props) => [
-                    `${value.toLocaleString()} tokens (${props.payload.percentage}%)`,
-                    props.payload.type
-                  ]}
-                />
-                <Legend 
-                  wrapperStyle={{ color: '#f8fafc' }}
-                  formatter={(value, entry) => (
-                    <span style={{ color: entry.color }}>{value}</span>
-                  )}
-                />
-              </PieChart>
-            </ResponsiveContainer>
+          <div className="stat-row">
+            <span className="stat-label">Total Transactions</span>
+            <span className="stat-value">{poolData?.totalTransactions?.toLocaleString() || '0'}</span>
           </div>
-        </div>
-
-        {/* Staking Duration Distribution */}
-        <div className="metric-chart-card">
-          <h4>Staking Duration Distribution</h4>
-          <div style={{ width: '100%', height: '250px' }}>
-            <ResponsiveContainer>
-              <PieChart>
-                <Pie
-                  data={getTimeDistribution()}
-                  cx="50%"
-                  cy="50%"
-                  labelLine={false}
-                  label={renderCustomizedLabel}
-                  outerRadius={80}
-                  fill="#8884d8"
-                  dataKey="count"
-                >
-                  {getTimeDistribution().map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={TIME_COLORS[index]} />
-                  ))}
-                </Pie>
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: 'rgba(15, 23, 42, 0.95)',
-                    border: '1px solid rgba(255, 255, 255, 0.1)',
-                    borderRadius: '8px',
-                    color: '#f8fafc'
-                  }}
-                  formatter={(value, name, props) => [
-                    `${value} stakers (${props.payload.percentage}%)`,
-                    props.payload.period
-                  ]}
-                />
-                <Legend 
-                  wrapperStyle={{ color: '#f8fafc' }}
-                  formatter={(value, entry) => (
-                    <span style={{ color: entry.color }}>{value}</span>
-                  )}
-                />
-              </PieChart>
-            </ResponsiveContainer>
+          <div className="stat-row">
+            <span className="stat-label">Network</span>
+            <span className="stat-value">{poolData?.network?.toUpperCase() || 'N/A'}</span>
           </div>
-        </div>
-
-        {/* Key Statistics */}
-        <div className="metric-stats-card">
-          <h4>Key Statistics</h4>
-          <div className="stats-list">
-            <div className="stat-row">
-              <span className="stat-label">Average Stake Size</span>
-              <span className="stat-value">{poolData?.averageStake?.toFixed(2) || '0'} ALGO</span>
-            </div>
-            <div className="stat-row">
-              <span className="stat-label">Total Transactions</span>
-              <span className="stat-value">{poolData?.totalTransactions?.toLocaleString() || '0'}</span>
-            </div>
-            <div className="stat-row">
-              <span className="stat-label">Network</span>
-              <span className="stat-value">{poolData?.network?.toUpperCase() || 'N/A'}</span>
-            </div>
-            <div className="stat-row">
-              <span className="stat-label">Pool Status</span>
-              <span className="stat-value">{poolData?.status || 'Unknown'}</span>
-            </div>
-            <div className="stat-row">
-              <span className="stat-label">Estimated APY</span>
-              <span className="stat-value">{poolData?.apy?.toFixed(2) || '0'}%</span>
-            </div>
-            <div className="stat-row">
-              <span className="stat-label">Total Pool Value</span>
-              <span className="stat-value">{poolData?.totalValue?.toFixed(2) || '0'} ALGO</span>
-            </div>
+          <div className="stat-row">
+            <span className="stat-label">Pool Status</span>
+            <span className="stat-value">{poolData?.status || 'Unknown'}</span>
+          </div>
+          <div className="stat-row">
+            <span className="stat-label">Estimated APY</span>
+            <span className="stat-value">{poolData?.apy?.toFixed(2) || '0'}%</span>
+          </div>
+          <div className="stat-row">
+            <span className="stat-label">Total Pool Value</span>
+            <span className="stat-value">{poolData?.totalValue?.toFixed(2) || '0'} ALGO</span>
           </div>
         </div>
       </div>

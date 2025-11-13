@@ -7,6 +7,13 @@ const StakersChart = ({ data }) => {
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   };
 
+  const css = typeof window !== 'undefined' ? getComputedStyle(document.documentElement) : null;
+  const axisColor = css ? css.getPropertyValue('--text-muted').trim() || '#94a3b8' : '#94a3b8';
+  const gridColor = css ? css.getPropertyValue('--border-color').trim() || 'rgba(148,163,184,0.3)' : 'rgba(148,163,184,0.3)';
+  const tooltipBg = css ? css.getPropertyValue('--bg-primary').trim() || 'white' : 'white';
+  const tooltipBorder = css ? css.getPropertyValue('--border-color').trim() || '#e5e7eb' : '#e5e7eb';
+  const tooltipText = css ? css.getPropertyValue('--text-primary').trim() || '#111827' : '#111827';
+
   return (
     <div style={{ width: '100%', height: '300px' }}>
       <ResponsiveContainer>
@@ -17,23 +24,23 @@ const StakersChart = ({ data }) => {
               <stop offset="95%" stopColor="#10b981" stopOpacity={0.1}/>
             </linearGradient>
           </defs>
-          <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
+          <CartesianGrid strokeDasharray="3 3" stroke={gridColor} />
           <XAxis 
             dataKey="date" 
-            stroke="#94a3b8"
+            stroke={axisColor}
             fontSize={12}
             tickFormatter={formatDate}
           />
           <YAxis 
-            stroke="#94a3b8"
+            stroke={axisColor}
             fontSize={12}
           />
           <Tooltip
             contentStyle={{
-              backgroundColor: 'rgba(15, 23, 42, 0.95)',
-              border: '1px solid rgba(255, 255, 255, 0.1)',
+              backgroundColor: tooltipBg,
+              border: `1px solid ${tooltipBorder}`,
               borderRadius: '8px',
-              color: '#f8fafc'
+              color: tooltipText
             }}
             formatter={(value) => [value.toLocaleString(), 'Active Stakers']}
             labelFormatter={(label) => `Date: ${formatDate(label)}`}

@@ -161,6 +161,21 @@ class AlgorandService {
     this.algodClient = new algosdk.Algodv2("", this.config.algodUrl, 443);
   }
 
+  // Decode a box name provided in base64 form (as returned by the API)
+  decodeBoxName(boxNameBase64) {
+    try {
+      const boxNameBytes = new Uint8Array(
+        atob(boxNameBase64)
+          .split("")
+          .map((c) => c.charCodeAt(0))
+      );
+      return decodeBoxName(boxNameBytes);
+    } catch (e) {
+      console.warn("Failed to decode box name", e);
+      return null;
+    }
+  }
+
   // Switch network
   switchNetwork(network) {
     this.network = network;
