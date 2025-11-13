@@ -56,6 +56,9 @@ export const useSDKEvents = (refreshFunctions) => {
     // Subscribe to events
     algoStakeXClient.events.on("wallet:connected", handleWalletConnect);
     algoStakeXClient.events.on("wallet:disconnected", handleWalletDisconnect);
+    // Also listen to SDK UI wallet connection events
+    algoStakeXClient.events.on("wallet:connection:connected", handleWalletConnect);
+    algoStakeXClient.events.on("wallet:connection:disconnected", handleWalletDisconnect);
     algoStakeXClient.events.on("stake:success", handleStakeSuccess);
     algoStakeXClient.events.on("withdraw:success", handleWithdrawSuccess);
     algoStakeXClient.events.on(
@@ -66,8 +69,13 @@ export const useSDKEvents = (refreshFunctions) => {
     // Cleanup subscriptions
     return () => {
       algoStakeXClient.events.off("wallet:connected", handleWalletConnect);
+      algoStakeXClient.events.off("wallet:disconnected", handleWalletDisconnect);
       algoStakeXClient.events.off(
-        "wallet:disconnected",
+        "wallet:connection:connected",
+        handleWalletConnect
+      );
+      algoStakeXClient.events.off(
+        "wallet:connection:disconnected",
         handleWalletDisconnect
       );
       algoStakeXClient.events.off("stake:success", handleStakeSuccess);

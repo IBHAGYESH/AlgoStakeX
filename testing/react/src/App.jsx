@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import './App.css';
@@ -6,7 +6,7 @@ import './App.css';
 import MainLayout from './layouts/MainLayout';
 import Home from './pages/Home';
 import Profile from './pages/Profile';
-import Feature from './pages/Feature';
+import Game from './pages/Game';
 import { useSDK } from './hooks/useSDK';
 
 function App() {
@@ -23,14 +23,21 @@ function App() {
     );
   }
 
+  const RequireAuth = ({ children }) => {
+    if (!algoStakeXClient?.account) {
+      return <Navigate to="/" replace />;
+    }
+    return children;
+  };
+
   return (
     <Router>
       <ToastContainer />
       <Routes>
         <Route path="/" element={<MainLayout />}>
-          <Route index element={<Home />} />
-          <Route path="profile" element={<Profile />} />
-          <Route path="feature" element={<Feature />} />
+          <Route index element={algoStakeXClient?.account ? <Navigate to="/game" replace /> : <Home />} />
+          <Route path="game" element={<RequireAuth><Game /></RequireAuth>} />
+          <Route path="profile" element={<RequireAuth><Profile /></RequireAuth>} />
         </Route>
       </Routes>
     </Router>

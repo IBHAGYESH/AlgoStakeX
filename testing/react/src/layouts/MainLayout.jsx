@@ -1,11 +1,13 @@
-import { Outlet, Link } from "react-router-dom";
+import { Outlet, Link, useLocation, useNavigate } from "react-router-dom";
 import { useSDK } from "../hooks/useSDK";
 import { useSDKEvents } from "../hooks/useSDKEvents";
 import { formatWalletAddress, getRandomAvatar } from "../utils";
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 
 function MainLayout() {
   const { algoStakeXClient } = useSDK();
+  const navigate = useNavigate();
+  const location = useLocation();
   const [, forceUpdate] = useState({});
 
   const refreshHeader = useCallback(() => {
@@ -17,12 +19,18 @@ function MainLayout() {
     onWalletDisconnect: refreshHeader,
   });
 
+  useEffect(() => {
+    if (algoStakeXClient?.account && location.pathname === "/") {
+      navigate("/game", { replace: true });
+    }
+  }, [algoStakeXClient?.account, location.pathname, navigate]);
+
   return (
     <>
       <header>
         <div className="container header-content">
           <div className="logo">
-            <h1>🎮 AlgoStakeX Game Platform</h1>
+            <h1>🎮 AlgoStakeX: Solo Arena</h1>
           </div>
           {algoStakeXClient?.account && (
             <div className="profile-section">
@@ -41,8 +49,12 @@ function MainLayout() {
         <div className="container">
           <div className="nav-links">
             <Link to="/">Home</Link>
-            <Link to="/profile">Profile</Link>
-            <Link to="/feature">Premium Features</Link>
+            {algoStakeXClient?.account && (
+              <>
+                <Link to="/game">Game</Link>
+                <Link to="/profile">Profile</Link>
+              </>
+            )}
           </div>
         </div>
       </nav>
@@ -56,7 +68,7 @@ function MainLayout() {
       <footer>
         <div className="container footer-content">
           <p>
-            &copy; {new Date().getFullYear()} AlgoStakeX Game Platform. All rights reserved.
+            &copy; {new Date().getFullYear()} AlgoStakeX: Solo Arena. All rights reserved.
           </p>
         </div>
       </footer>

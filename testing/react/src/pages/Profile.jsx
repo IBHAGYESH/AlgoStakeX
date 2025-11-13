@@ -1,19 +1,27 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useSDK } from "../hooks/useSDK";
 import { useSDKEvents } from "../hooks/useSDKEvents";
-import { toast } from "react-toastify";
-import { LockOutlined, CheckCircleOutlined } from "@mui/icons-material";
+import { CheckCircleOutlined, Star, Rocket, EmojiEvents, Diamond, AutoAwesome } from "@mui/icons-material";
 
 function Profile() {
   const { algoStakeXClient } = useSDK();
   const [stackingStatus, setStackingStatus] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [validStake, setValidStake] = useState(false);
+  const [stakedTokens, setStakedTokens] = useState(0);
+  const [currentTier, setCurrentTier] = useState(null);
+
+  const tiers = useMemo(() => ([
+    { name: "Explorer", minStake: 10, icon: <Star />, color: "#8B5CF6", benefits: ["Basic Game Access", "Daily Rewards", "Community Chat"] },
+    { name: "Adventurer", minStake: 30, icon: <Rocket />, color: "#3B82F6", benefits: ["Premium Game Modes", "Priority Matchmaking", "Exclusive Events"] },
+    { name: "Champion", minStake: 50, icon: <EmojiEvents />, color: "#F59E0B", benefits: ["VIP Support", "Beta Access", "Custom Avatar", "Leaderboard Highlights"] },
+    { name: "Legend", minStake: 60, icon: <Diamond />, color: "#EF4444", benefits: ["Private Tournaments", "NFT Rewards", "Developer Access", "Revenue Sharing"] },
+  ]), []);
 
   const checkStackingStatus = async () => {
     if (!algoStakeXClient || !algoStakeXClient.account) {
       setStackingStatus(null);
-      setValidStake(false);
+      setStakedTokens(0);
+      setCurrentTier(null);
       return;
     }
 
@@ -22,15 +30,26 @@ function Profile() {
       const status = await algoStakeXClient.stackingStatus("default");
       setStackingStatus(status);
 
-      // Check if stake is valid (minimum 100 tokens)
-      const validation = await algoStakeXClient.validateStacking("default", 100);
-      setValidStake(validation.valid);
-    } catch (error) {
-      console.error("Error checking stacking status:", error);
-      if (error.message.includes("No stake found")) {
-        setStackingStatus({ exists: false });
-        setValidStake(false);
+      if (status?.exists && status.stakeData?.amount) {
+        const amountRaw = Number(status.stakeData.amount) || 0;
+        let decimals = 0;
+        try {
+          const meta = await algoStakeXClient.getFTMetadata(status.stakeData.tokenId);
+          decimals = meta?.decimals || 0;
+        } catch {}
+        const amountTokens = amountRaw / Math.pow(10, decimals);
+        setStakedTokens(amountTokens);
+
+        const userTier = [...tiers].reverse().find(t => amountTokens >= t.minStake) || null;
+        setCurrentTier(userTier);
+      } else {
+        setStakedTokens(0);
+        setCurrentTier(null);
       }
+    } catch (error) {
+      setStackingStatus(null);
+      setStakedTokens(0);
+      setCurrentTier(null);
     } finally {
       setLoading(false);
     }
@@ -44,55 +63,13 @@ function Profile() {
     onWalletConnect: checkStackingStatus,
     onWalletDisconnect: () => {
       setStackingStatus(null);
-      setValidStake(false);
+      setStakedTokens(0);
+      setCurrentTier(null);
     },
     onStakeSuccess: checkStackingStatus,
     onWithdrawSuccess: checkStackingStatus,
     onEmergencyWithdrawSuccess: checkStackingStatus,
   });
-
-  const handleConnectWallet = () => {
-    if (algoStakeXClient) {
-      // Maximize SDK to show wallet connection UI
-      if (algoStakeXClient.maximizeSDK) {
-        algoStakeXClient.maximizeSDK();
-      } else {
-        toast.info("Please use the SDK UI to connect your wallet");
-      }
-    }
-  };
-
-  const handleConnectPera = async () => {
-    try {
-      if (!algoStakeXClient) {
-        toast.error("SDK not initialized");
-        return;
-      }
-
-      // Connect Pera wallet via SDK
-      // Note: This would need to be implemented in the SDK's UI
-      toast.info("Opening Pera wallet connection...");
-    } catch (error) {
-      console.error("Error connecting Pera wallet:", error);
-      toast.error("Failed to connect Pera wallet");
-    }
-  };
-
-  const handleConnectDefly = async () => {
-    try {
-      if (!algoStakeXClient) {
-        toast.error("SDK not initialized");
-        return;
-      }
-
-      // Connect Defly wallet via SDK
-      // Note: This would need to be implemented in the SDK's UI
-      toast.info("Opening Defly wallet connection...");
-    } catch (error) {
-      console.error("Error connecting Defly wallet:", error);
-      toast.error("Failed to connect Defly wallet");
-    }
-  };
 
   if (!algoStakeXClient) {
     return (
@@ -104,46 +81,7 @@ function Profile() {
   }
 
   if (!algoStakeXClient.account) {
-    return (
-      <div className="profile-container">
-        <h2 className="page-title">Connect Your Wallet</h2>
-        <div className="wallet-connection-section">
-          <p className="wallet-connection-description">
-            Connect your wallet to start staking and unlock premium features.
-          </p>
-          <div className="wallet-buttons">
-            <button
-              className="btn btn-primary wallet-btn"
-              onClick={handleConnectPera}
-            >
-              <img
-                src="https://perawallet.app/favicon.ico"
-                alt="Pera"
-                className="wallet-icon"
-              />
-              Connect with Pera
-            </button>
-            <button
-              className="btn btn-secondary wallet-btn"
-              onClick={handleConnectDefly}
-            >
-              <img
-                src="https://defly.app/favicon.ico"
-                alt="Defly"
-                className="wallet-icon"
-              />
-              Connect with Defly
-            </button>
-            <button
-              className="btn btn-outline wallet-btn"
-              onClick={handleConnectWallet}
-            >
-              Use SDK UI
-            </button>
-          </div>
-        </div>
-      </div>
-    );
+    return null; // Route is protected; this is a fallback no-op
   }
 
   return (
@@ -157,7 +95,7 @@ function Profile() {
         </div>
 
         <div className="stacking-status-section">
-          <h3>Stacking Status</h3>
+          <h3>Staking Status</h3>
           {loading ? (
             <div className="loading-small">
               <div className="loading-spinner-small"></div>
@@ -167,50 +105,25 @@ function Profile() {
             <div className="stacking-info">
               <div className="status-badge success">
                 <CheckCircleOutlined />
-                <span>Active Stacking</span>
+                <span>Active Staking</span>
               </div>
               <div className="stacking-details">
                 <div className="detail-item">
-                  <span className="detail-label">Amount Stacked:</span>
-                  <span className="detail-value">
-                    {stackingStatus.stakeData?.amount || "N/A"}
-                  </span>
+                  <span className="detail-label">Amount Staked:</span>
+                  <span className="detail-value">{stakedTokens}</span>
                 </div>
                 <div className="detail-item">
-                  <span className="detail-label">Reward Type:</span>
-                  <span className="detail-value">
-                    {stackingStatus.stakeData?.rewardType || "N/A"}
-                  </span>
+                  <span className="detail-label">Current Tier:</span>
+                  <span className="detail-value">{currentTier?.name || 'None'}</span>
                 </div>
-                {stackingStatus.stakeData?.rewardType === "APY" && (
-                  <div className="detail-item">
-                    <span className="detail-label">Reward Rate:</span>
-                    <span className="detail-value">
-                      {stackingStatus.stakeData?.rewardRate || 0}% APY
-                    </span>
-                  </div>
-                )}
-                {stackingStatus.stakeData?.rewardType === "UTILITY" && (
-                  <div className="detail-item">
-                    <span className="detail-label">Utilities:</span>
-                    <span className="detail-value">
-                      {stackingStatus.stakeData?.utility || "N/A"}
-                    </span>
-                  </div>
-                )}
               </div>
             </div>
           ) : (
-            <div className="status-badge inactive">
-              <LockOutlined />
-              <span>No Active Stacking</span>
-            </div>
-          )}
-
-          {validStake && (
-            <div className="access-status">
-              <CheckCircleOutlined className="access-icon" />
-              <span>You have access to premium features!</span>
+            <div className="stacking-info">
+              <div className="status-badge">
+                <span>No Active Staking</span>
+              </div>
+              <p style={{ marginTop: '0.5rem' }}>Use the SDK panel to start staking and unlock utilities.</p>
             </div>
           )}
         </div>
@@ -218,42 +131,52 @@ function Profile() {
         <div className="profile-actions">
           <button
             className="btn btn-primary"
-            onClick={() => {
-              toast.info("Staking functionality will open SDK UI");
-              if (algoStakeXClient.maximizeSDK) {
-                algoStakeXClient.maximizeSDK();
-              }
-            }}
+            onClick={() => algoStakeXClient?.maximizeSDK && algoStakeXClient.maximizeSDK()}
           >
-            Stake Tokens
+            Open SDK Panel
           </button>
-          <button
-            className="btn btn-secondary"
-            onClick={async () => {
-              try {
-                await algoStakeXClient.withdraw("default");
-                toast.success("Withdrawal successful!");
-              } catch (error) {
-                toast.error(error.message || "Withdrawal failed");
-              }
-            }}
-            disabled={!stackingStatus?.exists}
-          >
-            Withdraw
-          </button>
-          <button
-            className="btn btn-outline"
-            onClick={async () => {
-              try {
-                await algoStakeXClient.disconnectWallet();
-                toast.success("Wallet disconnected");
-              } catch (error) {
-                toast.error("Failed to disconnect wallet");
-              }
-            }}
-          >
-            Disconnect Wallet
-          </button>
+        </div>
+      </div>
+
+      <div className="tiers-section" style={{ marginTop: '2rem' }}>
+        <h2 className="section-title">Your Membership Tiers</h2>
+        <p className="section-subtitle">Benefits scale with your staked amount</p>
+        <div className="tiers-grid">
+          {tiers.map((tier) => {
+            const isUnlocked = stakedTokens >= tier.minStake;
+            const isCurrent = currentTier?.name === tier.name;
+            return (
+              <div
+                key={tier.name}
+                className={`tier-card ${isUnlocked ? 'unlocked' : 'locked'} ${isCurrent ? 'current' : ''}`}
+                style={{
+                  borderColor: isUnlocked ? tier.color : '#e5e7eb',
+                  background: isCurrent ? `linear-gradient(135deg, ${tier.color}15, ${tier.color}25)` : 'white'
+                }}
+              >
+                <div className="tier-header">
+                  <div className="tier-icon" style={{ color: isUnlocked ? tier.color : '#9ca3af' }}>
+                    {tier.icon}
+                  </div>
+                  <div className="tier-info">
+                    <h3 className="tier-name" style={{ color: isUnlocked ? tier.color : '#6b7280' }}>
+                      {tier.name}
+                      {isCurrent && <span className="current-badge">CURRENT</span>}
+                    </h3>
+                    <p className="tier-requirement">{tier.minStake} tokens minimum</p>
+                  </div>
+                </div>
+                <div className="tier-benefits">
+                  {tier.benefits.map((benefit, idx) => (
+                    <div key={idx} className="benefit-item">
+                      <AutoAwesome style={{ fontSize: '16px', color: isUnlocked ? tier.color : '#9ca3af' }} />
+                      <span style={{ color: isUnlocked ? '#374151' : '#9ca3af' }}>{benefit}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
     </div>
