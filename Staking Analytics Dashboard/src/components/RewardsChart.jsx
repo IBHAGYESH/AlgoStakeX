@@ -1,7 +1,7 @@
 import React from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
-const RewardsChart = ({ data }) => {
+const RewardsChart = ({ data, symbol }) => {
   const formatDate = (dateStr) => {
     const date = new Date(dateStr);
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
@@ -42,7 +42,7 @@ const RewardsChart = ({ data }) => {
               borderRadius: '8px',
               color: tooltipText
             }}
-            formatter={(value) => [value.toLocaleString(), 'Daily Rewards']}
+            formatter={(value) => [`${Number(value).toLocaleString()} ${symbol || ''}`.trim(), 'Daily Rewards']}
             labelFormatter={(label) => `Date: ${formatDate(label)}`}
           />
           <Bar 

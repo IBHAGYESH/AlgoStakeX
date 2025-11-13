@@ -20,6 +20,13 @@ function App() {
   const [networkStatus, setNetworkStatus] = useState(null);
   const [theme, setTheme] = useState('light');
   const [totalPools, setTotalPools] = useState(0);
+  const [timeRange, setTimeRange] = useState('30d'); // 30d | 6m | 1y | all
+  const [selectedTokenId, setSelectedTokenId] = useState(null);
+  const [symbol, setSymbol] = useState('');
+  const [filteredHistory, setFilteredHistory] = useState([]);
+  const [filteredStakers, setFilteredStakers] = useState([]);
+  const [displayData, setDisplayData] = useState(null);
+  const [filteredStakes, setFilteredStakes] = useState([]);
 
   // Handle network switch
   const handleNetworkChange = (newNetwork) => {
@@ -99,10 +106,6 @@ function App() {
       const history = await algorandService.getStakingHistory(poolId, 30);
       setStakingHistory(history);
       
-      // Fetch top stakers
-      const topStakers = await algorandService.getTopStakers(poolId, 50);
-      setStakers(topStakers);
-      
     } catch (err) {
       console.error('Pool search error:', err);
       setError(err.message || 'Failed to fetch pool data');
@@ -113,6 +116,157 @@ function App() {
       setLoading(false);
     }
   };
+
+  // Compute filtered analytics for current timeRange and selected token
+  useEffect(() => {
+    if (!poolData) return;
+
+    const tokensMeta = poolData.tokensMetadata || {};
+    const tokenIds = Object.keys(tokensMeta);
+    let tokenId = selectedTokenId;
+    if (!tokenId && tokenIds.length > 0) {
+      tokenId = String(tokenIds[0]);
+      setSelectedTokenId(tokenId);
+    }
+
+    const tokenMeta = tokenId ? tokensMeta[tokenId] : null;
+    const decimals = tokenMeta?.decimals ?? 6;
+    const unitSymbol = tokenMeta?.symbol || '';
+    setSymbol(unitSymbol);
+
+    const YEAR_SECONDS = 365 * 24 * 60 * 60;
+    const pow10 = Math.pow(10, decimals);
+    const nowSec = Math.floor(Date.now() / 1000);
+
+    const daysMap = { '30d': 30, '6m': 180, '1y': 365 };
+    let startSec;
+    if (timeRange === 'all') {
+      const earliest = (poolData.stakes || []).reduce((min, s) => Math.min(min, s.stakeData.stakedAt), nowSec);
+      startSec = earliest || nowSec;
+    } else {
+      startSec = nowSec - (daysMap[timeRange] || 30) * 24 * 60 * 60;
+    }
+
+    // Filter stakes by token and time range
+    const allStakes = poolData.stakes || [];
+    const tokenFiltered = tokenId
+      ? allStakes.filter(s => String(s.stakeData.tokenId) === String(tokenId))
+      : allStakes;
+    const stakesInWindow = tokenFiltered.filter(s => s.stakeData.stakedAt >= startSec);
+
+    // Build daily buckets
+    const numDays = Math.max(1, Math.floor((nowSec - startSec) / (24*60*60)) + 1);
+    const daily = {};
+    for (let i = 0; i < numDays; i++) {
+      const d = new Date((startSec + i * 24*60*60) * 1000);
+      const dateStr = d.toISOString().split('T')[0];
+      daily[dateStr] = { date: dateStr, totalStaked: 0, stakers: 0, rewards: 0, transactions: 0 };
+    }
+
+    // Compute series similar to service (events on stake date)
+    let cumulativeStakedTokens = 0;
+    const seenStakers = new Set();
+    const sorted = stakesInWindow.slice().sort((a,b) => a.stakeData.stakedAt - b.stakeData.stakedAt);
+    sorted.forEach(({ stakeData }) => {
+      const amountTokens = stakeData.amount / pow10;
+      cumulativeStakedTokens += amountTokens;
+      seenStakers.add(stakeData.staker);
+      const dateStr = new Date(stakeData.stakedAt * 1000).toISOString().split('T')[0];
+      if (daily[dateStr]) {
+        daily[dateStr].totalStaked = cumulativeStakedTokens;
+        daily[dateStr].stakers = seenStakers.size;
+        daily[dateStr].transactions += 1;
+        if (stakeData.rewardType === 'APY' && stakeData.rewardRate > 0) {
+          const dailyRewardTokens = (stakeData.amount * stakeData.rewardRate) / 10000 / 365 / pow10;
+          daily[dateStr].rewards += dailyRewardTokens;
+        }
+      }
+    });
+
+    const series = Object.values(daily);
+    setFilteredHistory(series);
+
+    // Compute derived metrics and stakers
+    let totalTokens = 0;
+    const uniqueStakers = new Set();
+    let weightedApy = 0;
+    let totalRewardsTokens = 0;
+    const stakerAgg = new Map();
+
+    tokenFiltered.forEach(({ stakeData }) => {
+      // clip to window
+      const startClip = Math.max(startSec, stakeData.stakedAt || 0);
+      const endSec = Math.min(nowSec, (stakeData.lockEndTime || 0) > 0 ? stakeData.lockEndTime : nowSec);
+      const timeSec = Math.max(0, endSec - startClip);
+      const amountTokens = stakeData.amount / pow10;
+      if (stakeData.stakedAt >= startSec) {
+        totalTokens += amountTokens;
+        uniqueStakers.add(stakeData.staker);
+      }
+      if (stakeData.rewardType === 'APY' && stakeData.rewardRate > 0 && timeSec > 0) {
+        const rewardRaw = Math.floor((stakeData.amount * stakeData.rewardRate * timeSec) / (10000 * YEAR_SECONDS));
+        totalRewardsTokens += rewardRaw / pow10;
+      }
+      // Weighted APY based on all stakes in token filter
+      if (stakeData.rewardType === 'APY') {
+        // rewardRate is in basis points; convert to percent
+        weightedApy += (stakeData.amount * (stakeData.rewardRate / 100))
+      }
+      // Aggregate top stakers for selected token within time window
+      if (stakeData.stakedAt >= startSec) {
+        const key = stakeData.staker;
+        const prev = stakerAgg.get(key) || { address: key, stakedAmount: 0, rewards: 0, joinDate: new Date(stakeData.stakedAt*1000).toISOString().split('T')[0], utilities: [] };
+        prev.stakedAmount += amountTokens;
+        if (stakeData.rewardType === 'APY' && stakeData.rewardRate > 0 && timeSec > 0) {
+          const rewardRaw = Math.floor((stakeData.amount * stakeData.rewardRate * timeSec) / (10000 * YEAR_SECONDS));
+          prev.rewards += rewardRaw / pow10;
+        } else if (stakeData.rewardType !== 'APY' && stakeData.utility) {
+          if (!prev.utilities.includes(stakeData.utility)) {
+            prev.utilities.push(stakeData.utility);
+          }
+        }
+        if (stakeData.stakedAt*1000 < new Date(prev.joinDate).getTime()) {
+          prev.joinDate = new Date(stakeData.stakedAt*1000).toISOString().split('T')[0];
+        }
+        stakerAgg.set(key, prev);
+      }
+    });
+
+    // finalize weighted APY
+    const totalAmountRaw = tokenFiltered.reduce((sum, s) => sum + s.stakeData.amount, 0);
+    const weightedApyPercent = totalAmountRaw > 0 ? (weightedApy / totalAmountRaw) : 0;
+
+    // average staking time per unique staker (clipped window)
+    const stakerDurations = new Map();
+    tokenFiltered.forEach(({ stakeData }) => {
+      const startClip = Math.max(startSec, stakeData.stakedAt || 0);
+      const endSec = Math.min(nowSec, (stakeData.lockEndTime || 0) > 0 ? stakeData.lockEndTime : nowSec);
+      const ms = Math.max(0, (endSec - startClip) * 1000);
+      const prev = stakerDurations.get(stakeData.staker) || 0;
+      stakerDurations.set(stakeData.staker, prev + ms);
+    });
+    const avgStakingDays = stakerDurations.size > 0
+      ? Math.floor(Array.from(stakerDurations.values()).reduce((a,b)=>a+b,0) / stakerDurations.size / (1000*60*60*24))
+      : 0;
+
+    // Build display data overlaying poolData
+    const merged = {
+      ...poolData,
+      totalValue: totalTokens,
+      totalStakers: uniqueStakers.size,
+      apy: weightedApyPercent,
+      totalRewards: totalRewardsTokens,
+      avgStakingTime: avgStakingDays,
+    };
+    setDisplayData(merged);
+
+    // Build filtered stakers list (top 50)
+    const top = Array.from(stakerAgg.values())
+      .sort((a,b) => b.stakedAmount - a.stakedAmount)
+      .slice(0,50);
+    setFilteredStakers(top);
+    setFilteredStakes(tokenFiltered);
+  }, [poolData, timeRange, selectedTokenId]);
 
   const handleKeyPress = (e) => {
     if (e.key === 'Enter') {
@@ -230,6 +384,17 @@ function App() {
                   className="search-input"
                 />
               </div>
+              <select
+                value={timeRange}
+                onChange={(e) => setTimeRange(e.target.value)}
+                className="filter-select"
+                aria-label="Select time range"
+              >
+                <option value="30d">Last 30d</option>
+                <option value="6m">Last 6 months</option>
+                <option value="1y">Last year</option>
+                <option value="all">All time</option>
+              </select>
               <button 
                 onClick={searchPool}
                 disabled={loading}
@@ -266,6 +431,24 @@ function App() {
                       <span>{poolData.status}</span>
                     </div>
                   </div>
+                  <div className="token-badge" title="Staked token">
+                    <span className="token-symbol">{symbol}</span>
+                  </div>
+                  {poolData.tokensMetadata && Object.keys(poolData.tokensMetadata).length > 1 && (
+                    <div className="token-filter">
+                      <label className="token-label">Token</label>
+                      <select
+                        value={selectedTokenId || ''}
+                        onChange={(e) => setSelectedTokenId(e.target.value)}
+                        className="filter-select"
+                        aria-label="Select token"
+                      >
+                        {Object.entries(poolData.tokensMetadata).map(([tid, meta]) => (
+                          <option key={tid} value={tid}>{meta.symbol || tid}</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
                 </div>
               </section>
 
@@ -275,35 +458,35 @@ function App() {
                   <div className="chip-card">
                     <DollarSign className="chip-icon" />
                     <div className="chip-content">
-                      <div className="chip-value">${poolData.totalValue?.toLocaleString() || '0'}</div>
-                      <div className="chip-label">Total Value Locked</div>
+                      <div className="chip-value">{(displayData?.totalValue || 0).toLocaleString()} {symbol}</div>
+                      <div className="chip-label">Total Staked</div>
                     </div>
                   </div>
                   <div className="chip-card">
                     <Users className="chip-icon" />
                     <div className="chip-content">
-                      <div className="chip-value">{poolData.totalStakers || 0}</div>
+                      <div className="chip-value">{displayData?.totalStakers || 0}</div>
                       <div className="chip-label">Total Stakers</div>
                     </div>
                   </div>
                   <div className="chip-card">
                     <TrendingUp className="chip-icon" />
                     <div className="chip-content">
-                      <div className="chip-value">{poolData.apy?.toFixed(2) || '0'}%</div>
+                      <div className="chip-value">{displayData?.apy?.toFixed(2) || '0'}%</div>
                       <div className="chip-label">APY</div>
                     </div>
                   </div>
                   <div className="chip-card">
                     <DollarSign className="chip-icon" />
                     <div className="chip-content">
-                      <div className="chip-value">${poolData.totalRewards?.toLocaleString() || '0'}</div>
+                      <div className="chip-value">{(displayData?.totalRewards || 0).toLocaleString()} {symbol}</div>
                       <div className="chip-label">Total Rewards</div>
                     </div>
                   </div>
                   <div className="chip-card">
                     <Activity className="chip-icon" />
                     <div className="chip-content">
-                      <div className="chip-value">{poolData.avgStakingTime || '0'} days</div>
+                      <div className="chip-value">{displayData?.avgStakingTime || '0'} days</div>
                       <div className="chip-label">Avg Staking Time</div>
                     </div>
                   </div>
@@ -315,27 +498,27 @@ function App() {
                 <div className="charts-grid">
                   <div className="chart-card">
                     <h4>Staking Volume Over Time</h4>
-                    <StakingChart data={stakingHistory} />
+                    <StakingChart data={filteredHistory} symbol={symbol} />
                   </div>
                   <div className="chart-card">
                     <h4>Stakers Growth</h4>
-                    <StakersChart data={stakingHistory} />
+                    <StakersChart data={filteredHistory} />
                   </div>
                   <div className="chart-card">
                     <h4>Total Rewards by Date</h4>
-                    <RewardsChart data={stakingHistory} />
+                    <RewardsChart data={filteredHistory} symbol={symbol} />
                   </div>
                 </div>
               </section>
 
               {/* Pool Metrics */}
               <section className="metrics-section">
-                <PoolMetrics poolData={poolData} stakers={stakers} stakingHistory={stakingHistory} loading={loading} />
+                <PoolMetrics poolData={displayData || poolData} stakers={filteredStakers} stakes={filteredStakes} symbol={symbol} stakingHistory={filteredHistory} loading={loading} />
               </section>
 
               {/* Stakers List */}
               <section className="stakers-section">
-                <StakersList stakers={stakers} />
+                <StakersList stakers={filteredStakers} symbol={symbol} />
               </section>
             </>
           )}

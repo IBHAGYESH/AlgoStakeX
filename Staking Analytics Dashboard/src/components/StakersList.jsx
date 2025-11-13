@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Users, Search, Award } from 'lucide-react';
 
-const StakersList = ({ stakers }) => {
+const StakersList = ({ stakers, symbol }) => {
   const [searchTerm, setSearchTerm] = useState('');
 
   const handleSearchClick = () => {
@@ -76,16 +76,26 @@ const StakersList = ({ stakers }) => {
             <div className="staker-card-body">
               <div className="metric">
                 <div className="metric-label">Staked Amount</div>
-                <div className="metric-value">{staker.stakedAmount.toLocaleString()} tokens</div>
+                <div className="metric-value">{staker.stakedAmount.toLocaleString()} {symbol}</div>
               </div>
               <div className="metric">
                 <div className="metric-label">Rewards</div>
-                <div className="metric-value">{staker.rewards.toLocaleString()}</div>
+                <div className="metric-value">{staker.rewards.toLocaleString()} {symbol}</div>
               </div>
               <div className="metric">
                 <div className="metric-label">Join Date</div>
                 <div className="metric-value">{formatDate(staker.joinDate)}</div>
               </div>
+              {Array.isArray(staker.utilities) && staker.utilities.length > 0 && (
+                <div className="metric">
+                  <div className="metric-label">Utility Rewards</div>
+                  <div className="utility-badges">
+                    {staker.utilities.map((u) => (
+                      <span key={u} className="utility-badge">{u}</span>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         ))}

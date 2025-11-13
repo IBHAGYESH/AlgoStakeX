@@ -202,6 +202,33 @@ class AlgorandService {
     }
   }
 
+  // Fetch ASA metadata from indexer for display (symbol and decimals)
+  async getAssetMetadata(assetId) {
+    try {
+      const url = `${this.config.indexerUrl}/v2/assets/${assetId}`;
+      const res = await fetch(url);
+      if (!res.ok) {
+        throw new Error(`HTTP error! status: ${res.status}`);
+      }
+      const data = await res.json();
+      const params = data?.asset?.params || {};
+      return {
+        assetId: Number(assetId),
+        symbol: params['unit-name'] || params.symbol || String(assetId),
+        name: params.name || String(assetId),
+        decimals: Number(params.decimals) || 0,
+      };
+    } catch (e) {
+      // Fallback defaults if indexer call fails
+      return {
+        assetId: Number(assetId),
+        symbol: String(assetId),
+        name: String(assetId),
+        decimals: 0,
+      };
+    }
+  }
+
   // Get specific box data using REST API
   async getBoxData(boxNameBase64) {
     try {
@@ -299,11 +326,19 @@ class AlgorandService {
       // Calculate pool metrics from real stake data
       const poolMetrics = this.calculatePoolMetricsFromStakes(poolBoxes);
 
+      // Collect token metadata for tokens present in stakes
+      const tokenIds = Array.from(new Set(poolBoxes.map(s => s.stakeData.tokenId)));
+      const tokensMetadataEntries = await Promise.all(
+        tokenIds.map(async (tid) => [tid, await this.getAssetMetadata(tid)])
+      );
+      const tokensMetadata = Object.fromEntries(tokensMetadataEntries);
+
       return {
         poolId,
         network: this.network,
         ...poolMetrics,
         stakes: poolBoxes,
+        tokensMetadata,
       };
     } catch (error) {
       console.error("Error fetching pool data:", error);
@@ -376,12 +411,19 @@ class AlgorandService {
       return sum + (dailyReward * stakingDays);
     }, 0);
 
-    // Calculate average staking time
-    const avgStakingTime = stakes.length > 0 
-      ? Math.floor(stakes.reduce((sum, stake) => {
-          const stakingDays = Math.floor((Date.now() - stake.stakeData.stakedAt) / (1000 * 60 * 60 * 24));
-          return sum + stakingDays;
-        }, 0) / stakes.length)
+    // Calculate average staking time per unique staker
+    const stakerDurations = new Map();
+    const nowMs = Date.now();
+    stakes.forEach(({ stakeData }) => {
+      const startMs = (stakeData.stakedAt || 0) * 1000;
+      const endMsRaw = (stakeData.lockEndTime || 0) * 1000;
+      const endMs = endMsRaw > startMs ? Math.min(endMsRaw, nowMs) : nowMs;
+      const durationMs = Math.max(0, endMs - startMs);
+      const prev = stakerDurations.get(stakeData.staker) || 0;
+      stakerDurations.set(stakeData.staker, prev + durationMs);
+    });
+    const avgStakingTime = stakerDurations.size > 0
+      ? Math.floor(Array.from(stakerDurations.values()).reduce((a,b)=>a+b,0) / stakerDurations.size / (1000*60*60*24))
       : 0;
 
     return {

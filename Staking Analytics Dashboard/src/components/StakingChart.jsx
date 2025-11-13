@@ -1,9 +1,9 @@
 import React from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
-const StakingChart = ({ data }) => {
+const StakingChart = ({ data, symbol }) => {
   const formatValue = (value) => {
-    return `$${(value / 1000000).toFixed(2)}M`;
+    return `${Number(value).toLocaleString()} ${symbol || ''}`.trim();
   };
 
   const formatDate = (dateStr) => {
