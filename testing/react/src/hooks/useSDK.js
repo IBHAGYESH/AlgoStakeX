@@ -61,7 +61,7 @@ export function useSDK() {
         console.log("AlgoStakeX SDK initialized");
 
         // Set up treasury wallet configuration
-        setupTreasuryWallet(sdkInstance);
+        // (Moved to run after wallet connection via useSDKEvents)
       } catch (error) {
         console.error("SDK initialization error:", error);
       }
