@@ -786,6 +786,9 @@ class AlgoStakeX {
    */
   addTreasuryWallet(walletAddress, mnemonic) {
     try {
+      if (!this.#walletConnected) {
+        throw new Error("Cannot add treasury wallet before wallet connection");
+      }
       if (!walletAddress || typeof walletAddress !== "string") {
         throw new Error("Treasury wallet address is required");
       }
@@ -838,7 +841,7 @@ class AlgoStakeX {
         address: walletAddress,
       });
 
-      if (!this.#disableUi) {
+      if (!this.#disableUi && this.#walletConnected) {
         this.#uiManager.showSDKUI();
       }
 
