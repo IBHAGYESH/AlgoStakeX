@@ -605,6 +605,7 @@ export class UIManager {
     if (this.#disableUi) return;
 
     const overlay = document.getElementById("algox-loading-overlay");
+    const minimizedBtn = document.getElementById("algox-minimized-btn");
     const msg = document.getElementById("algox-processing-message");
 
     if (!overlay || !msg) return;
@@ -617,6 +618,7 @@ export class UIManager {
 
     requestAnimationFrame(() => {
       overlay.classList.add("visible");
+      if (minimizedBtn) minimizedBtn.classList.add("processing");
     });
   }
 
@@ -627,10 +629,15 @@ export class UIManager {
     if (this.#disableUi) return;
 
     const overlay = document.getElementById("algox-loading-overlay");
-    if (!overlay) return;
+    const minimizedBtn = document.getElementById("algox-minimized-btn");
+    if (!overlay) {
+      if (minimizedBtn) minimizedBtn.classList.remove("processing");
+      return;
+    }
 
     requestAnimationFrame(() => {
       overlay.classList.remove("visible");
+      if (minimizedBtn) minimizedBtn.classList.remove("processing");
     });
   }
 
