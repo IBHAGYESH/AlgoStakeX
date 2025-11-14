@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { useSDK } from "../hooks/useSDK";
 import { useSDKEvents } from "../hooks/useSDKEvents";
-import { CheckCircleOutlined, Star, Rocket, EmojiEvents, Diamond, AutoAwesome } from "@mui/icons-material";
+import { Star, Rocket, EmojiEvents, Diamond, AutoAwesome } from "@mui/icons-material";
 
 function Profile() {
   const { algoStakeXClient } = useSDK();
@@ -27,7 +27,7 @@ function Profile() {
 
     try {
       setLoading(true);
-      const status = await algoStakeXClient.stackingStatus("default");
+      const status = await algoStakeXClient.stackingStatus();
       setStackingStatus(status);
 
       if (status?.exists && status.stakeData?.amount) {
@@ -94,40 +94,6 @@ function Profile() {
           <p className="wallet-address">{algoStakeXClient.account}</p>
         </div>
 
-        <div className="stacking-status-section">
-          <h3>Staking Status</h3>
-          {loading ? (
-            <div className="loading-small">
-              <div className="loading-spinner-small"></div>
-              <span>Checking status...</span>
-            </div>
-          ) : stackingStatus?.exists ? (
-            <div className="stacking-info">
-              <div className="status-badge success">
-                <CheckCircleOutlined />
-                <span>Active Staking</span>
-              </div>
-              <div className="stacking-details">
-                <div className="detail-item">
-                  <span className="detail-label">Amount Staked:</span>
-                  <span className="detail-value">{stakedTokens}</span>
-                </div>
-                <div className="detail-item">
-                  <span className="detail-label">Current Tier:</span>
-                  <span className="detail-value">{currentTier?.name || 'None'}</span>
-                </div>
-              </div>
-            </div>
-          ) : (
-            <div className="stacking-info">
-              <div className="status-badge">
-                <span>No Active Staking</span>
-              </div>
-              <p style={{ marginTop: '0.5rem' }}>Use the SDK panel to start staking and unlock utilities.</p>
-            </div>
-          )}
-        </div>
-
         <div className="profile-actions">
           <button
             className="btn btn-primary"
@@ -174,6 +140,19 @@ function Profile() {
                     </div>
                   ))}
                 </div>
+                {!isUnlocked && (
+                  <div className="tier-progress">
+                    <div className="progress-bar">
+                      <div
+                        className="progress-fill"
+                        style={{ width: `${Math.min((stakedTokens / tier.minStake) * 100, 100)}%`, backgroundColor: tier.color }}
+                      ></div>
+                    </div>
+                    <p className="progress-text">
+                      {Math.max(tier.minStake - stakedTokens, 0)} more tokens needed
+                    </p>
+                  </div>
+                )}
               </div>
             );
           })}

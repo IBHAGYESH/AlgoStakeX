@@ -30,7 +30,7 @@ function MainLayout() {
       <header>
         <div className="container header-content">
           <div className="logo">
-            <h1>🎮 AlgoStakeX: Solo Arena</h1>
+            <h1>🎮 Solo Arena</h1>
           </div>
           {algoStakeXClient?.account && (
             <div className="profile-section">
@@ -48,8 +48,9 @@ function MainLayout() {
       <nav>
         <div className="container">
           <div className="nav-links">
-            <Link to="/">Home</Link>
-            {algoStakeXClient?.account && (
+            {!algoStakeXClient?.account ? (
+              <Link to="/">Home</Link>
+            ) : (
               <>
                 <Link to="/game">Game</Link>
                 <Link to="/profile">Profile</Link>
@@ -68,7 +69,7 @@ function MainLayout() {
       <footer>
         <div className="container footer-content">
           <p>
-            &copy; {new Date().getFullYear()} AlgoStakeX: Solo Arena. All rights reserved.
+            &copy; {new Date().getFullYear()} Solo Arena. All rights reserved.
           </p>
         </div>
       </footer>

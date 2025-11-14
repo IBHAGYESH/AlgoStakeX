@@ -20,7 +20,7 @@ export function useSDK() {
           disableToast: false,
           toastLocation: "TOP_RIGHT", // TOP_LEFT | TOP_RIGHT
           minimizeUILocation: "right", // left | right
-          logo: "./logo.png", // your website logo (URL / path to image)
+          logo: "./src/assets/game-controller.png", // your website logo (URL / path to image)
           staking: {
             type: "FIXED", // FLEXIBLE | FIXED
             stake_period: 10080, // 7 days in minutes
@@ -59,7 +59,7 @@ export function useSDK() {
 
         setAlgoStakeXClient(sdkInstance);
         console.log("AlgoStakeX SDK initialized");
-        
+
         // Set up treasury wallet configuration
         setupTreasuryWallet(sdkInstance);
       } catch (error) {
@@ -76,44 +76,53 @@ export function useSDK() {
     try {
       const treasuryAddress = import.meta.env.VITE_TREASURY_ADDRESS;
       const treasuryMnemonic = import.meta.env.VITE_TREASURY_MNEMONIC;
-      
+
       if (treasuryAddress && treasuryMnemonic) {
-        console.log('Setting up treasury wallet...');
+        console.log("Setting up treasury wallet...");
         await client.addTreasuryWallet(treasuryAddress, treasuryMnemonic);
         setTreasuryConfigured(true);
-        console.log('Treasury wallet configured successfully');
+        console.log("Treasury wallet configured successfully");
       } else {
-        console.warn('Treasury wallet credentials not found in environment variables');
-        console.warn('Please set VITE_TREASURY_ADDRESS and VITE_TREASURY_MNEMONIC in your .env file');
+        console.warn(
+          "Treasury wallet credentials not found in environment variables"
+        );
+        console.warn(
+          "Please set VITE_TREASURY_ADDRESS and VITE_TREASURY_MNEMONIC in your .env file"
+        );
       }
     } catch (error) {
-      console.error('Failed to configure treasury wallet:', error);
+      console.error("Failed to configure treasury wallet:", error);
     }
   };
 
   // Function to manually add treasury wallet (can be called when wallet connects)
   const addTreasuryWallet = async () => {
     if (!algoStakeXClient) {
-      console.error('SDK not initialized');
+      console.error("SDK not initialized");
       return false;
     }
 
     try {
       const treasuryAddress = import.meta.env.VITE_TREASURY_ADDRESS;
       const treasuryMnemonic = import.meta.env.VITE_TREASURY_MNEMONIC;
-      
+
       if (treasuryAddress && treasuryMnemonic) {
-        console.log('Adding treasury wallet...');
-        await algoStakeXClient.addTreasuryWallet(treasuryAddress, treasuryMnemonic);
+        console.log("Adding treasury wallet...");
+        await algoStakeXClient.addTreasuryWallet(
+          treasuryAddress,
+          treasuryMnemonic
+        );
         setTreasuryConfigured(true);
-        console.log('Treasury wallet added successfully');
+        console.log("Treasury wallet added successfully");
         return true;
       } else {
-        console.error('Treasury wallet credentials not found in environment variables');
+        console.error(
+          "Treasury wallet credentials not found in environment variables"
+        );
         return false;
       }
     } catch (error) {
-      console.error('Failed to add treasury wallet:', error);
+      console.error("Failed to add treasury wallet:", error);
       return false;
     }
   };

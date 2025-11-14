@@ -151,16 +151,6 @@ function Game() {
             Solo Arena
           </h2>
         </div>
-        <div>
-          <button
-            className="btn btn-outline"
-            onClick={() =>
-              algoStakeXClient?.maximizeSDK && algoStakeXClient.maximizeSDK()
-            }
-          >
-            Open SDK Panel
-          </button>
-        </div>
       </div>
 
       {currentTier && (
@@ -248,19 +238,73 @@ function Game() {
 
       {currentTier && (
         <div className="tiers-section" style={{ marginTop: 24 }}>
-          <h2 className="section-title">Your Active Perks</h2>
-          <p className="section-subtitle">
-            Unlocked based on your current tier ({currentTier.name})
-          </p>
-          <div
-            className="tiers-grid"
-            style={{ gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))" }}
-          >
-            {getUnlockedBenefits().map((benefit, idx) => (
-              <div key={idx} className="tier-card unlocked" style={{ padding: 16 }}>
-                <div className="benefit-item">
-                  <AutoAwesome style={{ color: currentTier.color }} />
-                  <span style={{ color: "#374151" }}>{benefit}</span>
+          <h2 className="section-title">Unlocked Game Features</h2>
+          <p className="section-subtitle">These are available based on your current tier</p>
+          <div className="benefits-grid">
+            {Array.from(new Set(getUnlockedBenefits())).map((feature, idx) => (
+              <div key={idx} className="benefit-card">
+                <div className="benefit-icon">
+                  <AutoAwesome />
+                </div>
+                <div className="benefit-content" style={{ width: '100%' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <h4 className="benefit-name">{feature}</h4>
+                    <span className="status-badge success" style={{ padding: '0.35rem 0.75rem' }}>Unlocked</span>
+                  </div>
+                  {feature === 'Basic Game Access' && (
+                    <p className="benefit-description">Access Solo Arena matches and practice modes.</p>
+                  )}
+                  {feature === 'Daily Rewards' && (
+                    <div style={{ marginTop: 8, display: 'flex', gap: 8, alignItems: 'center' }}>
+                      <p className="benefit-description" style={{ margin: 0 }}>Claim your daily demo reward.</p>
+                      <button className="btn btn-outline" disabled>Claim</button>
+                    </div>
+                  )}
+                  {feature === 'Community Chat' && (
+                    <div style={{ marginTop: 8, background: '#f8f9fa', border: '1px solid #e5e7eb', borderRadius: 8, padding: 12 }}>
+                      <div style={{ color: '#6b7280', fontSize: 12, marginBottom: 6 }}>Recent Messages (Demo)</div>
+                      <div style={{ display: 'grid', gap: 6 }}>
+                        <div style={{ background: 'white', padding: 8, borderRadius: 6, border: '1px solid #eef2f7' }}>Welcome to Solo Arena!</div>
+                        <div style={{ background: 'white', padding: 8, borderRadius: 6, border: '1px solid #eef2f7' }}>Good luck, have fun.</div>
+                      </div>
+                    </div>
+                  )}
+                  {feature === 'Premium Game Modes' && (
+                    <p className="benefit-description">Unlocks Ranked, Hardcore, and Time Attack modes.</p>
+                  )}
+                  {feature === 'Priority Matchmaking' && (
+                    <p className="benefit-description">Reduced queue times with priority placement.</p>
+                  )}
+                  {feature === 'Exclusive Events' && (
+                    <p className="benefit-description">Access to seasonal events and limited-time challenges.</p>
+                  )}
+                  {feature === 'VIP Support' && (
+                    <p className="benefit-description">Priority support queue and dedicated assistance.</p>
+                  )}
+                  {feature === 'Beta Access' && (
+                    <p className="benefit-description">Early access to experimental builds and features.</p>
+                  )}
+                  {feature === 'Custom Avatar' && (
+                    <div style={{ marginTop: 8, display: 'flex', gap: 8, alignItems: 'center' }}>
+                      <p className="benefit-description" style={{ margin: 0 }}>Personalize your in-game avatar.</p>
+                      <button className="btn btn-outline" disabled>Customize</button>
+                    </div>
+                  )}
+                  {feature === 'Leaderboard Highlights' && (
+                    <p className="benefit-description">Your profile gets highlighted on leaderboards.</p>
+                  )}
+                  {feature === 'Private Tournaments' && (
+                    <p className="benefit-description">Invitations to closed tournaments.</p>
+                  )}
+                  {feature === 'NFT Rewards' && (
+                    <p className="benefit-description">Eligibility for demo NFT reward drops.</p>
+                  )}
+                  {feature === 'Developer Access' && (
+                    <p className="benefit-description">Access to dev previews and feedback channels.</p>
+                  )}
+                  {feature === 'Revenue Sharing' && (
+                    <p className="benefit-description">Placeholder earnings dashboard for demo.</p>
+                  )}
                 </div>
               </div>
             ))}

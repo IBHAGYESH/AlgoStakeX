@@ -70,7 +70,7 @@ function Home() {
   return (
     <div className="home-container">
       <div className="hero-section">
-        <h1>Welcome to AlgoStakeX: Solo Arena</h1>
+        <h1>Welcome to Solo Arena</h1>
         <p className="hero-subtitle">A single-game demo showcasing tier-based utilities powered by staking</p>
 
         {!algoStakeXClient?.account && (
