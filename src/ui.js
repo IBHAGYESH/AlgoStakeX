@@ -295,6 +295,10 @@ export class UIManager {
     if (this.#disableUi) {
       return;
     }
+    if (!this.#sdk || !this.#sdk.account) {
+      this.resetToLoginUI();
+      return;
+    }
 
     document.getElementById("algox-sdk-container").style.display = "flex";
     document.getElementById("algox-header").style.display = "flex";
