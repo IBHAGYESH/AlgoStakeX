@@ -23,32 +23,32 @@ export function useSDK() {
           logo: "./src/assets/game-controller.png", // your website logo (URL / path to image)
           staking: {
             type: "FIXED", // FLEXIBLE | FIXED
-            stake_period: 10080, // 7 days in minutes
-            withdraw_penalty: 1, // 1% penalty for early withdrawal
+            stake_period: 1440, // 24 hours in minutes
+            withdraw_penalty: 10, // 10% penalty for early withdrawal
             reward: {
               type: "UTILITY", // APY | UTILITY
               stop_reward_on_stake_completion: false, // Allow ongoing rewards
               value: [
                 {
                   name: "Explorer", // Starter tier
-                  stake_amount: 10, // required
+                  stake_amount: 5, // required
                   value: "Basic Game Access + Daily Rewards + Community Chat", // utility features
                 },
                 {
                   name: "Adventurer", // Mid tier
-                  stake_amount: 30, // required
+                  stake_amount: 10, // required
                   value:
                     "All Explorer Benefits + Premium Game Modes + Priority Matchmaking + Exclusive Events", // enhanced features
                 },
                 {
                   name: "Champion", // High tier
-                  stake_amount: 50, // required
+                  stake_amount: 15, // required
                   value:
                     "All Adventurer Benefits + VIP Support + Beta Access + Custom Avatar + Leaderboard Highlights", // premium features
                 },
                 {
                   name: "Legend", // Ultimate tier
-                  stake_amount: 60, // required
+                  stake_amount: 20, // required
                   value:
                     "All Champion Benefits + Private Tournaments + NFT Rewards + Developer Access + Revenue Sharing", // ultimate features
                 },

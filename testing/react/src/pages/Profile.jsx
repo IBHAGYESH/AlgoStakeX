@@ -11,10 +11,10 @@ function Profile() {
   const [currentTier, setCurrentTier] = useState(null);
 
   const tiers = useMemo(() => ([
-    { name: "Explorer", minStake: 10, icon: <Star />, color: "#8B5CF6", benefits: ["Basic Game Access", "Daily Rewards", "Community Chat"] },
-    { name: "Adventurer", minStake: 30, icon: <Rocket />, color: "#3B82F6", benefits: ["Premium Game Modes", "Priority Matchmaking", "Exclusive Events"] },
-    { name: "Champion", minStake: 50, icon: <EmojiEvents />, color: "#F59E0B", benefits: ["VIP Support", "Beta Access", "Custom Avatar", "Leaderboard Highlights"] },
-    { name: "Legend", minStake: 60, icon: <Diamond />, color: "#EF4444", benefits: ["Private Tournaments", "NFT Rewards", "Developer Access", "Revenue Sharing"] },
+    { name: "Explorer", minStake: 5, icon: <Star />, color: "#8B5CF6", benefits: ["Basic Game Access", "Daily Rewards", "Community Chat"] },
+    { name: "Adventurer", minStake: 10, icon: <Rocket />, color: "#3B82F6", benefits: ["Premium Game Modes", "Priority Matchmaking", "Exclusive Events"] },
+    { name: "Champion", minStake: 15, icon: <EmojiEvents />, color: "#F59E0B", benefits: ["VIP Support", "Beta Access", "Custom Avatar", "Leaderboard Highlights"] },
+    { name: "Legend", minStake: 20, icon: <Diamond />, color: "#EF4444", benefits: ["Private Tournaments", "NFT Rewards", "Developer Access", "Revenue Sharing"] },
   ]), []);
 
   const checkStackingStatus = async () => {
