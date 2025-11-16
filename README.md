@@ -47,7 +47,7 @@ Add the following script tag to your HTML head (use CDN or your local build):
 <!-- Import AlgoStakeX SDK (CDN) -->
 <script
   defer
-  src="https://cdn.jsdelivr.net/gh/IBHAGYESH/AlgoStakeX@v1.0.0/dist/algostakex.js"
+  src="https://cdn.jsdelivr.net/gh/IBHAGYESH/AlgoStakeX@latest/dist/algostakex.js"
 ></script>
 <!-- Or use your local build during development -->
 <!-- <script defer src="./dist/algostakex.js"></script> -->
@@ -176,16 +176,26 @@ logo: "https://myapp.com/logo.png";
 - **Location:** `testing/html-css-js/`
 - **Config file:** `testing/html-css-js/index.js`
 
-#### Run with Live Deployed SDK (Recommended for most users)
+1. Set treasury wallet credentials (required) in `testing/html-css-js/env.js`:
 
-1. Configure the SDK in `index.js` as shown above.
-2. Start a local server from the `AlgoStakeX` directory:
+```js
+// testing/html-css-js/env.js
+window.ENV = {
+  ALGOSTAKEX_TREASURY_ADDRESS: "YOUR_TREASURY_ADDRESS",
+  ALGOSTAKEX_TREASURY_MNEMONIC: "your 25-word treasury mnemonic here",
+};
+```
+
+Note: This is for demo use only. Do not commit real mnemonics in production.
+
+2. Configure the SDK in `index.js` as shown above. The demo auto-unlocks the SDK using values from `env.js` after wallet connection.
+3. Start a local server from the `AlgoStakeX` directory:
 
 ```bash
 npx http-server .
 ```
 
-3. Open the demo in your browser:
+4. Open the demo in your browser:
 
 ```
 http://127.0.0.1:8080/testing/html-css-js/index.html
@@ -195,19 +205,24 @@ http://127.0.0.1:8080/testing/html-css-js/index.html
 
 1. Configure the SDK in `index.js` as above.
 2. Install dependencies and build the SDK:
-   ```bash
-   npm install
-   npm run build
-   ```
+
+```bash
+npm install
+npm run build
+```
+
 3. Change the `<script src=...>` in your HTML files to point to your local build (e.g., `../../dist/algostakex.js`).
 4. Start a local server:
-   ```bash
-   npx http-server .
-   ```
+
+```bash
+npx http-server .
+```
+
 5. Open the demo:
-   ```
-   http://127.0.0.1:8080/testing/html-css-js/index.html
-   ```
+
+```
+http://127.0.0.1:8080/testing/html-css-js/index.html
+```
 
 ### React Demo
 
@@ -215,7 +230,26 @@ http://127.0.0.1:8080/testing/html-css-js/index.html
 - **Config hook:** `testing/react/src/hooks/useSDK.js`
 
 1. Configure the SDK in `hooks/useSDK.js`.
-2. In the terminal:
+2. Create `.env` from the sample and set treasury wallet credentials:
+
+```bash
+cp testing/react/.env.sample testing/react/.env
+```
+
+Edit `testing/react/.env` and fill the following:
+
+```env
+VITE_TREASURY_ADDRESS=your_treasury_wallet_address
+VITE_TREASURY_MNEMONIC=your_treasury_wallet_mnemonic
+# (Optional) API endpoints
+VITE_ALGOD_SERVER=https://testnet-api.algonode.cloud
+VITE_INDEXER_SERVER=https://testnet-idx.algonode.cloud
+VITE_NETWORK=testnet
+```
+
+Note: `.env` is gitignored. Never commit real mnemonics.
+
+3. In the terminal:
 
 ```bash
 cd testing/react
@@ -224,7 +258,7 @@ npm run build
 npm run preview
 ```
 
-3. Open the demo:
+4. Open the demo:
 
 ```
 http://localhost:4173
