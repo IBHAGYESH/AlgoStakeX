@@ -56,16 +56,21 @@ class AlgoStakeX {
   #stakingConfig;
 
   constructor({
-    token_id,
-    enable_ui = true,
-    staking = {},
-    //
+    // Common SDK parameters
+    // Required
     env,
-    namespace,
+    // Optional
+    enable_ui = true,
     disableToast = false,
     toastLocation = "TOP_RIGHT",
     minimizeUILocation = "right",
     logo = null,
+    // AlgoStakeX-specific parameters
+    // Required
+    namespace,
+    token_id,
+    staking = {},
+    // Optional
   }) {
     try {
       // Validate all parameters
