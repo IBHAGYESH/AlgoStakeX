@@ -1623,53 +1623,6 @@ class AlgoStakeX {
     }
   }
 
-  async optInAsset(assetId) {
-    try {
-      if (!this.#walletConnected || !this.account) {
-        throw new Error("Wallet is not connected");
-      }
-
-      const suggestedParams = await this.#algodClient
-        .getTransactionParams()
-        .do();
-
-      const optInTxn =
-        algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
-          sender: this.account,
-          receiver: this.account,
-          amount: 0,
-          assetIndex: Number(assetId),
-          suggestedParams,
-        });
-
-      let signedTxn;
-      if (this.#mnemonicAccount) {
-        signedTxn = [optInTxn.signTxn(this.#mnemonicAccount.sk)];
-      } else {
-        const walletConnector =
-          this.#walletConnectors[this.#selectedWalletType];
-        if (!walletConnector) {
-          throw new Error("No wallet connector available");
-        }
-        const signedGroup = await walletConnector.signTransaction([
-          [{ txn: optInTxn, signers: [this.account] }],
-        ]);
-        signedTxn = Array.isArray(signedGroup[0])
-          ? signedGroup[0]
-          : signedGroup;
-      }
-
-      const { txid } = await this.#algodClient
-        .sendRawTransaction(signedTxn)
-        .do();
-      await algosdk.waitForConfirmation(this.#algodClient, txid, 10);
-      return txid;
-    } catch (error) {
-      // If already opted-in, Algod can throw; caller may ignore
-      throw error;
-    }
-  }
-
   /**
    * Admin Operations
    */
