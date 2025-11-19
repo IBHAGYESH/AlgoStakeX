@@ -249,7 +249,7 @@ class AlgoStakeX {
           }
 
           this.#uiManager.showLoadingOverlay("Staking...");
-          await this.stack({
+          await this.stake({
             poolId: this.#namespace,
             amount: userAmount,
           });
@@ -931,7 +931,7 @@ class AlgoStakeX {
    * Staking Operations
    */
 
-  async stack({
+  async stake({
     poolId = this.#namespace,
     amount,
     rawAmount,

@@ -280,23 +280,23 @@ http://localhost:4173
 
 #### Exposed Methods
 
-| Method & Signature                                                                | Description                                               |
-| --------------------------------------------------------------------------------- | --------------------------------------------------------- |
-| `minimizeSDK(): void`                                                             | Minimize the SDK UI                                       |
-| `maximizeSDK(): void`                                                             | Maximize the SDK UI                                       |
-| `connectWallet(address: string, mnemonic: string)`                                | Programmatic wallet connect (headless)                    |
-| `disconnectWallet(): Promise<boolean>`                                            | Disconnect all wallet sessions                            |
-| `addTreasuryWallet(address: string, mnemonic: string)`                            | Unlock SDK and set treasury for rewards                   |
-| `stack({ poolId?: string, amount: number, lockPeriod?: number })`                 | Create a stake (amount in raw base units)                 |
-| `withdraw(poolId?: string)`                                                       | Withdraw principal + rewards (rewards paid from treasury) |
-| `emergencyWithdraw(poolId?: string, penaltyPercentage: number)`                   | Early withdraw with penalty sent to treasury              |
-| `stackingStatus(poolId?: string)`                                                 | Read current staking info from box storage                |
-| `validateStacking(poolId?: string, minimumAmount?: number)`                       | Helper validation for client logic                        |
-| `getWalletFTs()`                                                                  | List wallet FTs (balances)                                |
-| `getFTMetadata(assetId: number)`                                                  | Fetch ASA metadata (name, unit, decimals, total, creator) |
-| `optInAsset(assetId: number)`                                                     | Opt-in to an ASA (returns txid)                           |
-| `addDonation(address: string, mnemonic: string, tokenId: number, amount: number)` | Admin: donate tokens to contract                          |
-| `withdrawExcessTokens(tokenId: number, amount: number)`                           | Admin: withdraw excess tokens from contract               |
+| Method & Signature                                                                    | Description                                               |
+| ------------------------------------------------------------------------------------- | --------------------------------------------------------- |
+| `minimizeSDK(): void`                                                                 | Minimize the SDK UI                                       |
+| `maximizeSDK(): void`                                                                 | Maximize the SDK UI                                       |
+| `connectWallet(address: string, mnemonic: string)`                                    | Programmatic wallet connect (headless)                    |
+| `disconnectWallet(): Promise<boolean>`                                                | Disconnect all wallet sessions                            |
+| `addTreasuryWallet(address: string, mnemonic: string)`                                | Unlock SDK and set treasury for rewards                   |
+| `stake({ poolId?: string, amount: number, rawAmount?: number, lockPeriod?: number })` | Create a stake (amount in raw base units)                 |
+| `withdraw(poolId?: string)`                                                           | Withdraw principal + rewards (rewards paid from treasury) |
+| `emergencyWithdraw(poolId?: string, penaltyPercentage: number)`                       | Early withdraw with penalty sent to treasury              |
+| `stackingStatus(poolId?: string)`                                                     | Read current staking info from box storage                |
+| `validateStacking(poolId?: string, minimumAmount?: number)`                           | Helper validation for client logic                        |
+| `getWalletFTs()`                                                                      | List wallet FTs (balances)                                |
+| `getFTMetadata(assetId: number)`                                                      | Fetch ASA metadata (name, unit, decimals, total, creator) |
+| `optInAsset(assetId: number)`                                                         | Opt-in to an ASA (returns txid)                           |
+| `addDonation(address: string, mnemonic: string, tokenId: number, amount: number)`     | Admin: donate tokens to contract                          |
+| `withdrawExcessTokens(tokenId: number, amount: number)`                               | Admin: withdraw excess tokens from contract               |
 
 ## 📡 SDK Events
 
