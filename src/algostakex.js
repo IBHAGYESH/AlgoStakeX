@@ -235,13 +235,24 @@ class AlgoStakeX {
             this.#uiManager.showToast("Invalid amount", "error");
             return;
           }
-
-          // Get decimals from selected asset and convert to raw amount
           const decimals = Number(selected.getAttribute("data-decimals")) || 0;
-          const rawAmount = Math.floor(userAmount * Math.pow(10, decimals));
+          const valueStr = String(amountInput?.value ?? "");
+          if (valueStr.includes(".")) {
+            const frac = valueStr.split(".")[1] || "";
+            if (frac.length > decimals) {
+              this.#uiManager.showToast(
+                `Amount supports up to ${decimals} decimals`,
+                "error"
+              );
+              return;
+            }
+          }
 
           this.#uiManager.showLoadingOverlay("Staking...");
-          await this.stack({ poolId: this.#namespace, amount: rawAmount });
+          await this.stack({
+            poolId: this.#namespace,
+            amount: userAmount,
+          });
           this.#uiManager.showToast("Staking successful!", "success");
 
           // Wait a moment for blockchain confirmation, then refresh UI
@@ -923,6 +934,7 @@ class AlgoStakeX {
   async stack({
     poolId = this.#namespace,
     amount,
+    rawAmount,
     lockPeriod = this.#stakingConfig.stake_period,
   }) {
     try {
@@ -936,12 +948,40 @@ class AlgoStakeX {
         throw new Error("Wallet is not connected");
       }
 
-      if (!amount || amount <= 0) {
+      // Determine raw amount from either token units (amount) or base units (rawAmount)
+      let amountRaw;
+      if (amount !== undefined) {
+        const amt = Number(amount);
+        if (!amt || amt <= 0) {
+          throw new Error("Amount must be greater than 0");
+        }
+        // Fetch decimals dynamically and validate precision
+        let decimals = 0;
+        try {
+          const meta = await this.getFTMetadata(this.#tokenId);
+          decimals = meta?.decimals || 0;
+        } catch {}
+        const s = String(amount);
+        if (s.includes(".")) {
+          const frac = s.split(".")[1] || "";
+          if (frac.length > decimals) {
+            throw new Error(`Amount supports up to ${decimals} decimals`);
+          }
+        }
+        amountRaw = Math.floor(amt * Math.pow(10, decimals));
+      } else {
+        amountRaw = Number(rawAmount);
+      }
+
+      if (!amountRaw || amountRaw <= 0) {
         throw new Error("Amount must be greater than 0");
+      }
+      if (!Number.isInteger(amountRaw)) {
+        throw new Error("Amount must be an integer in base units");
       }
 
       // Determine tier and rewards based on staked amount (convert using decimals)
-      const tierInfo = await this.#getTierForAmount(amount);
+      const tierInfo = await this.#getTierForAmount(amountRaw);
 
       // Use config defaults
       const isFlexible = this.#stakingConfig.type === "FLEXIBLE";
@@ -1007,7 +1047,7 @@ class AlgoStakeX {
         algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
           sender: this.account,
           receiver: this.#contractWalletAddress,
-          amount: BigInt(amount),
+          amount: BigInt(amountRaw),
           assetIndex: Number(this.#tokenId),
           suggestedParams,
         });
@@ -1038,7 +1078,7 @@ class AlgoStakeX {
           algosdk.ABIType.from("string").encode(poolId),
           algosdk.ABIType.from("uint64").encode(this.#tokenId),
           algosdk.ABIType.from("bool").encode(isFlexible),
-          algosdk.ABIType.from("uint64").encode(BigInt(amount)),
+          algosdk.ABIType.from("uint64").encode(BigInt(amountRaw)),
           algosdk.ABIType.from("uint64").encode(BigInt(finalLockPeriod)),
           algosdk.ABIType.from("string").encode(finalRewardType),
           algosdk.ABIType.from("uint64").encode(BigInt(finalRewardRate)),
@@ -1088,7 +1128,7 @@ class AlgoStakeX {
       return {
         transactionId: txid,
         poolId,
-        amount,
+        amount: amountRaw,
       };
     } catch (error) {
       console.error("Error stacking:", error.message);

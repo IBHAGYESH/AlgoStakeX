@@ -486,10 +486,23 @@ export class UIManager {
             if (amountInput) {
               amountInput.disabled = false;
               amountInput.value = "";
-              amountInput.placeholder = "Enter amount";
+              const decimals = Number(el.getAttribute("data-decimals")) || 0;
+              const raw = Number(el.getAttribute("data-amount")) || 0;
+              const maxTokens = raw / Math.pow(10, decimals);
+              // Dynamic step based on asset decimals (e.g., 0.01 for 2 decimals, 1 for 0 decimals)
+              const step =
+                decimals === 0
+                  ? "1"
+                  : `0.${"0".repeat(Math.max(0, decimals - 1))}1`;
+              amountInput.placeholder =
+                decimals === 0
+                  ? "Enter whole number"
+                  : `Enter amount (up to ${decimals} decimals)`;
               // Prevent negative values
               amountInput.min = "0";
-              amountInput.step = "any";
+              amountInput.step = step;
+              // Set max to wallet balance for the asset (in token units)
+              amountInput.max = maxTokens.toFixed(decimals);
             }
             if (stakeBtn) stakeBtn.disabled = false;
           }
