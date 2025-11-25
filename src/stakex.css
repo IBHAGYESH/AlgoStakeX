@@ -1,0 +1,412 @@
+/* ==========================================
+   SDK-SPECIFIC STYLES (ALGOSTAKEX)
+   ========================================== */
+
+#algox-stakex-content {
+  padding: 0;
+  gap: 0;
+  display: none;
+  flex-direction: column;
+  overflow-y: auto;
+  flex-grow: 1;
+}
+
+#algox-stakex-stake-tab {
+  gap: 0;
+}
+
+.algox-stakex-row {
+  display: flex;
+  gap: 8px;
+}
+
+.algox-stakex-asset-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 12px;
+  min-height: 60px;
+}
+
+.algox-stakex-asset-item {
+  border: 2px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 14px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  background: #ffffff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.algox-stakex-asset-item:hover {
+  background: #f9fafb;
+  border-color: #3498db;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 6px rgba(52, 152, 219, 0.1);
+}
+
+.algox-stakex-asset-item.selected {
+  border-color: #3498db;
+  background: #f0f0f0;
+  box-shadow: 0 4px 12px rgba(52, 152, 219, 0.2);
+  transform: translateY(-2px);
+}
+
+.algox-stakex-asset-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.algox-stakex-asset-name {
+  font-weight: 600;
+  font-size: 14px;
+  color: #111827;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.algox-stakex-asset-name::before {
+  content: "🪙";
+  font-size: 16px;
+}
+
+.algox-stakex-asset-amount {
+  color: #6b7280;
+  font-size: 13px;
+  font-weight: 500;
+  background: #f3f4f6;
+  padding: 4px 10px;
+  border-radius: 12px;
+}
+
+.algox-stakex-asset-loading,
+.algox-stakex-asset-empty,
+.algox-stakex-asset-error {
+  color: #6b7280;
+  font-size: 13px;
+  padding: 20px;
+  text-align: center;
+  background: #f9fafb;
+  border-radius: 8px;
+  border: 2px dashed #e5e7eb;
+  min-height: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.dark-theme .algox-stakex-asset-item {
+  border-color: #444;
+  background: #2d2d2d;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+.dark-theme .algox-stakex-asset-item:hover {
+  background: #3a3a3a;
+  border-color: #3498db;
+  box-shadow: 0 4px 6px rgba(52, 152, 219, 0.2);
+}
+
+.dark-theme .algox-stakex-asset-item.selected {
+  background: #3a3a3a;
+  border-color: #3498db;
+  box-shadow: 0 4px 12px rgba(52, 152, 219, 0.3);
+}
+
+.dark-theme .algox-stakex-asset-name {
+  color: #f9fafb;
+}
+
+.dark-theme .algox-stakex-asset-amount {
+  background: #3a3a3a;
+  color: #d1d5db;
+}
+
+.dark-theme .algox-stakex-asset-loading,
+.dark-theme .algox-stakex-asset-empty,
+.dark-theme .algox-stakex-asset-error {
+  color: #9ca3af;
+  background: #2d2d2d;
+  border-color: #444;
+}
+
+.algox-stakex-row input,
+.algox-stakex-row select,
+.algox-stakex-row button {
+  flex: 1;
+  padding: 12px 14px;
+  border: 2px solid #ddd;
+  border-radius: 8px;
+  font-size: 14px;
+  transition: all 0.3s ease;
+  background: white;
+  color: #111827;
+}
+
+.algox-stakex-row input:focus,
+.algox-stakex-row select:focus {
+  outline: none;
+  border-color: #3498db;
+  box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+  transform: translateY(-1px);
+}
+
+.algox-stakex-row input:disabled,
+.algox-stakex-row button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.algox-stakex-row button {
+  background: #3498db;
+  color: white;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-weight: 600;
+  border: 1px solid #3498db;
+  box-shadow: 0 2px 4px rgba(52, 152, 219, 0.2);
+}
+
+.algox-stakex-row button:hover:not(:disabled) {
+  background: #2980b9;
+  border-color: #2980b9;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(52, 152, 219, 0.3);
+}
+
+.dark-theme .algox-stakex-row input,
+.dark-theme .algox-stakex-row select {
+  background: #2d2d2d;
+  border-color: #444;
+  color: #f9fafb;
+}
+
+.dark-theme .algox-stakex-row button {
+  background: #3498db;
+  border-color: #3498db;
+  color: #ffffff;
+}
+
+.dark-theme .algox-stakex-row input:focus,
+.dark-theme .algox-stakex-row select:focus {
+  border-color: #3498db;
+  box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+}
+
+.dark-theme .algox-stakex-row button:hover:not(:disabled) {
+  background: #2980b9;
+  border-color: #2980b9;
+}
+
+/* Amount input specific styles */
+#algox-stakex-amount-input {
+  font-family: monospace;
+}
+
+/* My Staking Info Styles */
+.algox-stakex-mystake-info {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  padding: 12px;
+  background: #f8f9fa;
+  border-radius: 6px;
+  border: 1px solid #ddd;
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.dark-theme .algox-stakex-mystake-info {
+  background: #2d2d2d;
+  border-color: #444;
+}
+
+.algox-stakex-mystake-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px;
+  background: white;
+  border-radius: 4px;
+  border: 1px solid #ddd;
+  transition: all 0.2s ease;
+}
+
+.algox-stakex-mystake-item:hover {
+  border-color: #3498db;
+  box-shadow: 0 2px 4px rgba(52, 152, 219, 0.1);
+}
+
+.dark-theme .algox-stakex-mystake-item {
+  background: #3a3a3a;
+  border-color: #444;
+}
+
+.dark-theme .algox-stakex-mystake-item:hover {
+  border-color: #3498db;
+  box-shadow: 0 2px 4px rgba(52, 152, 219, 0.1);
+}
+
+/* Full width items for important fields */
+.algox-stakex-mystake-item.full-width {
+  grid-column: 1 / -1;
+}
+
+.algox-stakex-mystake-label {
+  font-size: 10px;
+  color: #6b7280;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.dark-theme .algox-stakex-mystake-label {
+  color: #9ca3af;
+}
+
+.algox-stakex-mystake-value {
+  font-size: 13px;
+  color: #111827;
+  font-weight: 700;
+  font-family: monospace;
+  word-break: break-word;
+}
+
+.dark-theme .algox-stakex-mystake-value {
+  color: #f9fafb;
+}
+
+.algox-stakex-mystake-address {
+  font-size: 10px;
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.algox-stakex-mystake-completed {
+  color: #10b981 !important;
+  font-weight: 700;
+}
+
+.dark-theme .algox-stakex-mystake-completed {
+  color: #10b981 !important;
+}
+
+.algox-stakex-mystake-reward {
+  color: #3498db;
+  font-weight: 700;
+}
+
+.dark-theme .algox-stakex-mystake-reward {
+  color: #3498db;
+}
+
+.algox-stakex-mystake-total {
+  color: #10b981 !important;
+  font-weight: 700;
+  font-size: 14px !important;
+}
+
+.dark-theme .algox-stakex-mystake-total {
+  color: #10b981 !important;
+}
+
+.algox-stakex-mystake-withdraw {
+  color: #10b981 !important;
+  font-weight: 700;
+  font-size: 14px !important;
+}
+
+.algox-stakex-mystake-withdraw.algox-stakex-mystake-penalty {
+  color: #ef4444 !important;
+}
+
+.dark-theme .algox-stakex-mystake-withdraw {
+  color: #10b981 !important;
+}
+
+.dark-theme .algox-stakex-mystake-withdraw.algox-stakex-mystake-penalty {
+  color: #f87171 !important;
+}
+
+.algox-stakex-mystake-penalty-amount {
+  color: #ef4444 !important;
+  font-weight: 700;
+  font-size: 13px !important;
+}
+
+.dark-theme .algox-stakex-mystake-penalty-amount {
+  color: #f87171 !important;
+}
+
+.algox-stakex-mystake-tier {
+  color: #f59e0b !important;
+  font-weight: 700;
+  font-size: 14px !important;
+}
+
+.dark-theme .algox-stakex-mystake-tier {
+  color: #fbbf24 !important;
+}
+
+.algox-stakex-mystake-loading,
+.algox-stakex-mystake-empty,
+.algox-stakex-mystake-error {
+  color: #6b7280;
+  font-size: 13px;
+  padding: 20px;
+  text-align: center;
+}
+
+.dark-theme .algox-stakex-mystake-loading,
+.dark-theme .algox-stakex-mystake-empty,
+.dark-theme .algox-stakex-mystake-error {
+  color: #9ca3af;
+}
+
+/* Withdraw Button States */
+.algox-stakex-withdraw-btn-ready {
+  background: #10b981 !important;
+  border-color: #10b981 !important;
+}
+
+.algox-stakex-withdraw-btn-ready:hover:not(:disabled) {
+  background: #059669 !important;
+}
+
+.algox-stakex-withdraw-btn-emergency {
+  background: #ef4444 !important;
+  border-color: #ef4444 !important;
+}
+
+.algox-stakex-withdraw-btn-emergency:hover:not(:disabled) {
+  background: #dc2626 !important;
+}
+
+.dark-theme .algox-stakex-withdraw-btn-ready {
+  background: #10b981 !important;
+  border-color: #10b981 !important;
+}
+
+.dark-theme .algox-stakex-withdraw-btn-ready:hover:not(:disabled) {
+  background: #059669 !important;
+}
+
+.dark-theme .algox-stakex-withdraw-btn-emergency {
+  background: #ef4444 !important;
+  border-color: #ef4444 !important;
+}
+
+.dark-theme .algox-stakex-withdraw-btn-emergency:hover:not(:disabled) {
+  background: #dc2626 !important;
+}
+
+/* Add spacing above withdraw button */
+.algox-stakex-withdraw-btn,
+.algox-stakex-withdraw-btn-ready,
+.algox-stakex-withdraw-btn-emergency {
+  margin-top: 20px;
+}

@@ -5,6 +5,7 @@
 
 import eventBus from "./event-bus.js";
 import "./ui.css";
+import "./stakex.css";
 
 export class UIManager {
   // ALGOXSUITE STANDARD
@@ -152,6 +153,7 @@ export class UIManager {
 
     // Setup event listeners
     this.#setupEventListeners(callbacks);
+    this.#setupSDKEventListeners(callbacks);
 
     // Setup toast container
     this.setupToastContainer();
@@ -161,20 +163,7 @@ export class UIManager {
    * Setup all event listeners
    */
   #setupEventListeners(callbacks) {
-    // Controls
-    document
-      .getElementById("algox-minimize-btn")
-      ?.addEventListener("click", () => callbacks.onMinimize());
-
-    document
-      .getElementById("algox-theme-btn")
-      ?.addEventListener("click", () => callbacks.onThemeToggle());
-
-    document
-      .getElementById("algox-logout-btn")
-      ?.addEventListener("click", () => callbacks.onLogout());
-
-    // Wallet choice
+    // Choose wallet button
     document
       .getElementById("algox-wallet-choice")
       ?.addEventListener("click", async (evt) => {
@@ -184,22 +173,25 @@ export class UIManager {
         await callbacks.onWalletConnect(walletType);
       });
 
-    // Initialize tab system
-    this.#initTabSystem(callbacks);
-
-    // Stake actions
-    document
-      .getElementById("algox-stakex-stake-btn")
-      ?.addEventListener("click", async () => callbacks.onStake());
-
-    document
-      .getElementById("algox-stakex-withdraw-btn")
-      ?.addEventListener("click", async () => callbacks.onWithdraw());
-
     // Maximized button
     document
       .getElementById("algox-minimized-btn")
       .addEventListener("click", () => callbacks.onMaximize());
+
+    // Minimize button
+    document
+      .getElementById("algox-minimize-btn")
+      ?.addEventListener("click", () => callbacks.onMinimize());
+
+    // Logout button
+    document
+      .getElementById("algox-logout-btn")
+      ?.addEventListener("click", () => callbacks.onLogout());
+
+    // Theme toggle
+    document
+      .getElementById("algox-theme-btn")
+      ?.addEventListener("click", () => callbacks.onThemeToggle());
 
     // Copy to clipboard for wallet address bar
     const walletAddressBar = document.getElementById("algox-wallet-address");
@@ -644,6 +636,23 @@ export class UIManager {
   // SDK-SPECIFIC METHODS (ALGOSTAKEX)
   // ==========================================
   // renderWalletAssets method is defined above in the common section
+
+  /**
+   * Setup SDK-specific event listeners
+   */
+  #setupSDKEventListeners(callbacks) {
+    // Initialize tab system (SDK-specific because it wires staking callbacks)
+    this.#initTabSystem(callbacks);
+
+    // Stake actions
+    document
+      .getElementById("algox-stakex-stake-btn")
+      ?.addEventListener("click", async () => callbacks.onStake());
+
+    document
+      .getElementById("algox-stakex-withdraw-btn")
+      ?.addEventListener("click", async () => callbacks.onWithdraw());
+  }
 
   /**
    * Render wallet assets
