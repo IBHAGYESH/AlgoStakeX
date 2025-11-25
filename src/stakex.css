@@ -11,10 +11,6 @@
   flex-grow: 1;
 }
 
-#algox-stakex-stake-tab {
-  gap: 0;
-}
-
 .algox-stakex-row {
   display: flex;
   gap: 8px;

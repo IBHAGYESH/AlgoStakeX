@@ -95,15 +95,16 @@ export class UIManager {
           </div>
           <button class="algox-tab-nav-btn" id="algox-tab-next" title="Next tabs">›</button>
         </div>
+        
         <div class="algox-tab-content">
-          <div id="algox-stakex-stake-tab" class="algox-tab-pane active">
+          <div id="algox-tab" class="algox-tab-pane active">
             <div id="algox-stakex-asset-list" class="algox-stakex-asset-list"></div>
             <div class="algox-stakex-row">
               <input type="number" id="algox-stakex-amount-input" placeholder="Amount" disabled />
               <button id="algox-stakex-stake-btn" disabled>Stake</button>
             </div>
           </div>
-          <div id="algox-stakex-mystakes-tab" class="algox-tab-pane">
+          <div id="algox-mystakes-tab" class="algox-tab-pane">
             <div id="algox-stakex-mystake-summary"></div>
             <div class="algox-stakex-row">
               <button id="algox-stakex-withdraw-btn" disabled>Withdraw</button>
@@ -558,12 +559,20 @@ export class UIManager {
    */
   #initTabSystem(callbacks) {
     const container = document.getElementById("algox-sdk-container");
+    const tabsContainer = container?.querySelector(".algox-tabs-container");
+    const tabContent = container?.querySelector(".algox-tab-content");
     const tabsTrack = container?.querySelector(".algox-tabs-track");
     const tabButtons = container?.querySelectorAll(".algox-tab-btn");
     const prevBtn = container?.querySelector("#algox-tab-prev");
     const nextBtn = container?.querySelector("#algox-tab-next");
 
     if (!tabsTrack || !tabButtons || tabButtons.length === 0) return;
+
+    if (tabButtons.length <= 1) {
+      if (tabsContainer) tabsContainer.style.display = "none";
+      if (tabContent) tabContent.style.display = "contents";
+      return;
+    }
 
     let currentOffset = 0;
     const totalTabs = tabButtons.length;
@@ -612,7 +621,7 @@ export class UIManager {
         const tabPanes = container.querySelectorAll(".algox-tab-pane");
         tabPanes.forEach((pane) => pane.classList.remove("active"));
 
-        const targetPane = container.querySelector(`#algox-stakex-${tab}-tab`);
+        const targetPane = container.querySelector(`#algox-${tab}-tab`);
         if (targetPane) targetPane.classList.add("active");
 
         // Call SDK-specific callbacks
