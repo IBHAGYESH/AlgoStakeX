@@ -38,19 +38,14 @@ class AlgoStakeX {
   #toastLocation;
   #mnemonicAccount; // For programmatic wallet connection
   #uiManager; // UI Manager instance
+  #indexerUrl;
 
   // ==========================================
   // SDK-SPECIFIC PRIVATE FIELDS (ALGOSTAKEX)
   // ==========================================
   #contractApplicationId;
   #contractWalletAddress;
-  #indexerUrl;
-  #messageElement;
-  #currentLoadingMessage;
-  #tempWalletOverlay;
   #namespace;
-  #processing;
-  #network;
   #treasuryWallet;
   #tokenId;
   #stakingConfig;
@@ -74,7 +69,7 @@ class AlgoStakeX {
   }) {
     try {
       // Validate all parameters
-      this.#network = Validator.validateEnvironment(env);
+      this.network = Validator.validateEnvironment(env);
       this.#namespace = Validator.validateNamespace(namespace);
       this.#tokenId = Validator.validateTokenId(token_id);
       this.#disableToast = Validator.validateDisableToast(disableToast);
@@ -103,29 +98,28 @@ class AlgoStakeX {
       // Initialize algosdk client
       this.#algodClient = new algosdk.Algodv2(
         "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-        this.#network === "mainnet"
+        this.network === "mainnet"
           ? "https://mainnet-api.algonode.cloud"
           : "https://testnet-api.algonode.cloud",
         443
       );
 
       this.#contractApplicationId =
-        this.#network === "mainnet" ? 749429587 : 749429587;
+        this.network === "mainnet" ? 749429587 : 749429587;
       this.#contractWalletAddress =
-        this.#network === "mainnet"
+        this.network === "mainnet"
           ? "ESEUVKN4EGRLZHQJPS7AH3ITLQMFG3LABXD4VXZVJGHZEZU2JMEMJRA6NU"
           : "ESEUVKN4EGRLZHQJPS7AH3ITLQMFG3LABXD4VXZVJGHZEZU2JMEMJRA6NU";
 
       // Initialize SDK variables
       this.#indexerUrl =
-        this.#network === "mainnet"
+        this.network === "mainnet"
           ? "https://mainnet-idx.algonode.cloud"
           : "https://testnet-idx.algonode.cloud";
       this.events = eventBus;
 
       // Initialize UI state
-      this.#messageElement = null;
-      this.#processing = false;
+      this.processing = false;
 
       // Initialize UI Manager
       this.#uiManager = new UIManager(this, {
@@ -154,7 +148,7 @@ class AlgoStakeX {
         }
 
         // Save initial state and initialize UI
-        this.#uiManager.saveUIState(this.isMinimized, this.theme);
+        this.#uiManager.saveUIState();
         this.#initUI();
       }
     } catch (error) {
@@ -193,8 +187,9 @@ class AlgoStakeX {
       onLogout: () => this.#handleLogout(),
       onThemeToggle: () => {
         this.theme = this.theme === "light" ? "dark" : "light";
-        this.#uiManager.saveUIState(this.isMinimized, this.theme);
+        this.#uiManager.saveUIState();
         this.#uiManager.applyTheme();
+        eventBus.emit("theme:changed", { theme: this.theme });
       },
       onRenderAssets: () => {
         this.#uiManager
@@ -384,7 +379,7 @@ class AlgoStakeX {
 
         if (!this.#disableUi) {
           this.#uiManager.showSDKUI();
-          // Auto-fetch assets after wallet connection restore
+          // Auto-fetch assets after wallet connection restore (SDK-Specific)
           setTimeout(() => {
             this.#uiManager
               .renderWalletAssets(
@@ -436,24 +431,7 @@ class AlgoStakeX {
 
     // If UI is disabled, we need to temporarily show wallet connection UI
     if (this.#disableUi) {
-      // Create temporary wallet connection UI
-      await this.#uiManager.showTemporaryWalletConnectionUI(
-        walletType,
-        async () => {
-          this.#connectionInProgress = false;
-          if (this.#walletConnectors[walletType]) {
-            try {
-              await this.#walletConnectors[walletType].disconnect();
-              if (this.#walletConnectors[walletType].killSession) {
-                await this.#walletConnectors[walletType].killSession();
-              }
-            } catch (error) {
-              console.error("Failed to disconnect wallet:", error);
-            }
-          }
-          eventBus.emit("wallet:connection:cancelled", { walletType });
-        }
-      );
+      console.log("UI is disabled, skipping wallet connection UI");
     } else {
       // Only manipulate DOM if UI is not disabled
       document.getElementById("algox-sdk-container").style.display = "none";
@@ -486,7 +464,7 @@ class AlgoStakeX {
 
       if (!this.#disableUi) {
         this.#uiManager.showSDKUI();
-        // Auto-fetch assets after wallet connection
+        // Auto-fetch assets after wallet connection (SDK-Specific)
         setTimeout(() => {
           this.#uiManager
             .renderWalletAssets(
@@ -500,10 +478,8 @@ class AlgoStakeX {
               this.#uiManager.showToast("Failed to load assets", "error")
             );
         }, 500);
-      } else {
-        // Hide the temporary wallet connection UI
-        this.#uiManager.hideTemporaryWalletConnectionUI();
       }
+
       this.#uiManager.showToast(`Connected to ${walletType} wallet`, "success");
       eventBus.emit("wallet:connection:connected", { address: this.account });
       this.#connectionInProgress = false;
@@ -514,7 +490,7 @@ class AlgoStakeX {
           await walletConnector.killSession(); // Extra hard-kill if supported
         }
         if (this.#disableUi) {
-          this.#uiManager.hideTemporaryWalletConnectionUI();
+          onsole.error("UI is disabled, skipping wallet connection UI");
         } else {
           window.location.reload();
         }
@@ -540,7 +516,7 @@ class AlgoStakeX {
               if (!this.#disableUi) {
                 this.#uiManager.showSDKUI();
                 this.#uiManager.updateWalletAddressBar();
-                // Auto-fetch assets after wallet connection
+                // Auto-fetch assets after wallet connection (SDK-Specific)
                 setTimeout(() => {
                   this.#uiManager
                     .renderWalletAssets(
@@ -558,7 +534,7 @@ class AlgoStakeX {
                     );
                 }, 500);
               } else {
-                this.#uiManager.hideTemporaryWalletConnectionUI();
+                console.error("UI is disabled, skipping wallet connection UI");
               }
 
               this.#uiManager.showToast(
@@ -583,7 +559,7 @@ class AlgoStakeX {
           error: "Failed to connect wallet!",
         });
         if (this.#disableUi) {
-          this.#uiManager.hideTemporaryWalletConnectionUI();
+          console.error("UI is disabled, skipping wallet connection UI");
         } else {
           this.#uiManager.resetToLoginUI();
         }
@@ -721,7 +697,7 @@ class AlgoStakeX {
 
       if (!this.#disableUi) {
         this.#uiManager.showSDKUI();
-        // Auto-fetch assets after wallet connection
+        // Auto-fetch assets after wallet connection SDK-Specific
         setTimeout(() => {
           this.#uiManager
             .renderWalletAssets(
@@ -749,50 +725,13 @@ class AlgoStakeX {
   }
 
   async disconnectWallet() {
-    try {
-      // Disconnect from all supported wallets
-      for (const [walletType, connector] of Object.entries(
-        this.#walletConnectors
-      )) {
-        try {
-          if (connector.disconnect) {
-            await connector.disconnect();
-          }
-          if (connector.killSession) {
-            await connector.killSession();
-          }
-        } catch (error) {
-          console.error(`Error disconnecting from ${walletType}:`, error);
-        }
-      }
-
-      // Clear localStorage
-      localStorage.removeItem("walletconnect");
-      localStorage.removeItem("DeflyWallet.Wallet");
-      localStorage.removeItem("PeraWallet.Wallet");
-
-      // Reset internal state
-      this.#walletConnected = false;
-      this.account = null;
-      this.#connectionInfo = null;
-      this.#selectedWalletType = null;
-      this.#connectionInProgress = false;
-      this.#mnemonicAccount = null;
-
-      // Emit disconnect event
-      eventBus.emit("wallet:disconnected", {});
-
-      if (!this.#disableUi) {
-        this.#uiManager.resetToLoginUI();
-      }
-
-      return true;
-    } catch (error) {
-      console.error("Error disconnecting wallet:", error);
-      return false;
+    if (!this.#walletConnected) {
+      throw new Error("No wallet is currently connected");
     }
-  }
 
+    // Handle logout process
+    await this.#handleLogout();
+  }
   // ==========================================
   // SDK-SPECIFIC PUBLIC METHODS (ALGOSTAKEX)
   // ==========================================
@@ -849,19 +788,18 @@ class AlgoStakeX {
         address: walletAddress,
         mnemonic: mnemonic,
       };
-
       this.sdkEnabled = true;
 
       // Emit event
       eventBus.emit("treasury:added", {
         address: walletAddress,
+        type: "mnemonic",
       });
 
-      if (!this.#disableUi && this.#walletConnected) {
-        this.#uiManager.showSDKUI();
-      }
-
-      return true;
+      return {
+        address: walletAddress,
+        type: "mnemonic",
+      };
     } catch (error) {
       console.error("Error adding treasury wallet:", error.message);
       eventBus.emit("treasury:add:failed", { error: error.message });
@@ -1019,8 +957,8 @@ class AlgoStakeX {
         throw new Error("Reward rate must be 0 when reward type is not APY");
       }
 
-      this.#processing = true;
-      eventBus.emit("sdk:processing:started", { processing: this.#processing });
+      this.processing = true;
+      eventBus.emit("sdk:processing:started", { processing: this.processing });
 
       const suggestedParams = await this.#algodClient
         .getTransactionParams()
@@ -1126,8 +1064,8 @@ class AlgoStakeX {
 
       await algosdk.waitForConfirmation(this.#algodClient, txid, 10);
 
-      this.#processing = false;
-      eventBus.emit("sdk:processing:stopped", { processing: this.#processing });
+      this.processing = false;
+      eventBus.emit("sdk:processing:stopped", { processing: this.processing });
       eventBus.emit("stake:success", { transactionId: txid });
 
       return {
@@ -1137,8 +1075,8 @@ class AlgoStakeX {
       };
     } catch (error) {
       console.error("Error stacking:", error.message);
-      this.#processing = false;
-      eventBus.emit("sdk:processing:stopped", { processing: this.#processing });
+      this.processing = false;
+      eventBus.emit("sdk:processing:stopped", { processing: this.processing });
       eventBus.emit("stake:failed", { error: error.message });
       throw error;
     }
@@ -1158,8 +1096,8 @@ class AlgoStakeX {
 
       // Address validations removed per user request
 
-      this.#processing = true;
-      eventBus.emit("sdk:processing:started", { processing: this.#processing });
+      this.processing = true;
+      eventBus.emit("sdk:processing:started", { processing: this.processing });
 
       const suggestedParams = await this.#algodClient
         .getTransactionParams()
@@ -1317,8 +1255,8 @@ class AlgoStakeX {
 
       await algosdk.waitForConfirmation(this.#algodClient, txid, 10);
 
-      this.#processing = false;
-      eventBus.emit("sdk:processing:stopped", { processing: this.#processing });
+      this.processing = false;
+      eventBus.emit("sdk:processing:stopped", { processing: this.processing });
       eventBus.emit("withdraw:success", { transactionId: txid });
 
       return {
@@ -1327,8 +1265,8 @@ class AlgoStakeX {
       };
     } catch (error) {
       console.error("Error withdrawing:", error.message);
-      this.#processing = false;
-      eventBus.emit("sdk:processing:stopped", { processing: this.#processing });
+      this.processing = false;
+      eventBus.emit("sdk:processing:stopped", { processing: this.processing });
       eventBus.emit("withdraw:failed", { error: error.message });
       throw error;
     }
@@ -1340,8 +1278,8 @@ class AlgoStakeX {
         throw new Error("Wallet is not connected");
       }
 
-      this.#processing = true;
-      eventBus.emit("sdk:processing:started", { processing: this.#processing });
+      this.processing = true;
+      eventBus.emit("sdk:processing:started", { processing: this.processing });
 
       const suggestedParams = await this.#algodClient
         .getTransactionParams()
@@ -1458,8 +1396,8 @@ class AlgoStakeX {
 
       await algosdk.waitForConfirmation(this.#algodClient, txid, 10);
 
-      this.#processing = false;
-      eventBus.emit("sdk:processing:stopped", { processing: this.#processing });
+      this.processing = false;
+      eventBus.emit("sdk:processing:stopped", { processing: this.processing });
       eventBus.emit("emergencyWithdraw:success", {
         transactionId: txid,
       });
@@ -1470,8 +1408,8 @@ class AlgoStakeX {
       };
     } catch (error) {
       console.error("Error emergency withdrawing:", error.message);
-      this.#processing = false;
-      eventBus.emit("sdk:processing:stopped", { processing: this.#processing });
+      this.processing = false;
+      eventBus.emit("sdk:processing:stopped", { processing: this.processing });
       eventBus.emit("emergencyWithdraw:failed", { error: error.message });
       throw error;
     }
@@ -1649,8 +1587,8 @@ class AlgoStakeX {
         throw new Error("Mnemonic does not match the provided wallet address");
       }
 
-      this.#processing = true;
-      eventBus.emit("sdk:processing:started", { processing: this.#processing });
+      this.processing = true;
+      eventBus.emit("sdk:processing:started", { processing: this.processing });
 
       const suggestedParams = await this.#algodClient
         .getTransactionParams()
@@ -1702,8 +1640,8 @@ class AlgoStakeX {
 
       await algosdk.waitForConfirmation(this.#algodClient, txid, 10);
 
-      this.#processing = false;
-      eventBus.emit("sdk:processing:stopped", { processing: this.#processing });
+      this.processing = false;
+      eventBus.emit("sdk:processing:stopped", { processing: this.processing });
       eventBus.emit("donation:success", { transactionId: txid });
 
       return {
@@ -1713,8 +1651,8 @@ class AlgoStakeX {
       };
     } catch (error) {
       console.error("Error adding donation:", error.message);
-      this.#processing = false;
-      eventBus.emit("sdk:processing:stopped", { processing: this.#processing });
+      this.processing = false;
+      eventBus.emit("sdk:processing:stopped", { processing: this.processing });
       eventBus.emit("donation:failed", { error: error.message });
       throw error;
     }
@@ -1739,8 +1677,8 @@ class AlgoStakeX {
         throw new Error("Treasury wallet mnemonic is invalid");
       }
 
-      this.#processing = true;
-      eventBus.emit("sdk:processing:started", { processing: this.#processing });
+      this.processing = true;
+      eventBus.emit("sdk:processing:started", { processing: this.processing });
 
       const suggestedParams = await this.#algodClient
         .getTransactionParams()
@@ -1776,8 +1714,8 @@ class AlgoStakeX {
 
       await algosdk.waitForConfirmation(this.#algodClient, txid, 10);
 
-      this.#processing = false;
-      eventBus.emit("sdk:processing:stopped", { processing: this.#processing });
+      this.processing = false;
+      eventBus.emit("sdk:processing:stopped", { processing: this.processing });
       eventBus.emit("withdrawExcess:success", { transactionId: txid });
 
       return {
@@ -1787,8 +1725,8 @@ class AlgoStakeX {
       };
     } catch (error) {
       console.error("Error withdrawing excess tokens:", error.message);
-      this.#processing = false;
-      eventBus.emit("sdk:processing:stopped", { processing: this.#processing });
+      this.processing = false;
+      eventBus.emit("sdk:processing:stopped", { processing: this.processing });
       eventBus.emit("withdrawExcess:failed", { error: error.message });
       throw error;
     }

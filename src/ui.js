@@ -7,6 +7,7 @@ import eventBus from "./event-bus.js";
 import "./ui.css";
 
 export class UIManager {
+  // ALGOXSUITE STANDARD
   #sdk;
   #disableUi;
   #disableToast;
@@ -16,6 +17,7 @@ export class UIManager {
   #currentLoadingMessage;
 
   constructor(sdk, config) {
+    // ALGOXSUITE STANDARD
     this.#sdk = sdk;
     this.#disableUi = config.disableUi;
     this.#disableToast = config.disableToast;
@@ -38,8 +40,8 @@ export class UIManager {
     }
 
     // Remove any existing
-    const existing = document.getElementById("algox-sdk-container");
-    if (existing) existing.remove();
+    const existingSdk = document.getElementById("algox-sdk-container");
+    if (existingSdk) existingSdk.remove();
 
     // Create SDK container and inner UI
     const container = document.createElement("div");
@@ -210,85 +212,6 @@ export class UIManager {
   }
 
   /**
-   * Initialize common tab system with navigation
-   */
-  #initTabSystem(callbacks) {
-    const container = document.getElementById("algox-sdk-container");
-    const tabsTrack = container?.querySelector(".algox-tabs-track");
-    const tabButtons = container?.querySelectorAll(".algox-tab-btn");
-    const prevBtn = container?.querySelector("#algox-tab-prev");
-    const nextBtn = container?.querySelector("#algox-tab-next");
-
-    if (!tabsTrack || !tabButtons || tabButtons.length === 0) return;
-
-    let currentOffset = 0;
-    const totalTabs = tabButtons.length;
-    const visibleTabs = 2;
-
-    // Hide navigation buttons if only 2 or fewer tabs
-    if (totalTabs <= visibleTabs) {
-      if (prevBtn) prevBtn.style.display = "none";
-      if (nextBtn) nextBtn.style.display = "none";
-    }
-
-    // Update navigation button states
-    const updateNavButtons = () => {
-      if (!prevBtn || !nextBtn || totalTabs <= visibleTabs) return;
-
-      prevBtn.disabled = currentOffset === 0;
-      nextBtn.disabled = currentOffset >= totalTabs - visibleTabs;
-    };
-
-    // Navigate tabs
-    const navigateTabs = (direction) => {
-      if (direction === "prev" && currentOffset > 0) {
-        currentOffset--;
-      } else if (
-        direction === "next" &&
-        currentOffset < totalTabs - visibleTabs
-      ) {
-        currentOffset++;
-      }
-
-      const offset = currentOffset * -50; // Each tab is 50% width
-      tabsTrack.style.transform = `translateX(${offset}%)`;
-      updateNavButtons();
-    };
-
-    // Tab click handlers
-    tabButtons.forEach((btn) => {
-      btn.addEventListener("click", () => {
-        const tab = btn.getAttribute("data-tab");
-
-        // Update active tab styling
-        tabButtons.forEach((b) => b.classList.remove("active"));
-        btn.classList.add("active");
-
-        // Update tab panes
-        const tabPanes = container.querySelectorAll(".algox-tab-pane");
-        tabPanes.forEach((pane) => pane.classList.remove("active"));
-
-        const targetPane = container.querySelector(`#algox-stakex-${tab}-tab`);
-        if (targetPane) targetPane.classList.add("active");
-
-        // Call SDK-specific callbacks
-        if (tab === "stake") {
-          callbacks.onRenderAssets();
-        } else if (tab === "mystakes") {
-          callbacks.onRenderMyStaking();
-        }
-      });
-    });
-
-    // Navigation button handlers
-    prevBtn?.addEventListener("click", () => navigateTabs("prev"));
-    nextBtn?.addEventListener("click", () => navigateTabs("next"));
-
-    // Initialize navigation state
-    updateNavButtons();
-  }
-
-  /**
    * Show SDK UI (after wallet connection)
    */
   showSDKUI() {
@@ -374,6 +297,353 @@ export class UIManager {
       document.body.appendChild(toastContainer);
     }
   }
+
+  /**
+   * Show toast notification
+   */
+  showToast(message, type = "info") {
+    // Emit toast event regardless of disableToast setting
+    eventBus.emit("toast:show", { message, type });
+
+    if (this.#disableToast || this.#disableUi) return;
+
+    const toastId = "algox-toast";
+    const existingToast = document.getElementById(toastId);
+    if (existingToast) existingToast.remove();
+
+    const toast = document.createElement("div");
+    toast.id = toastId;
+
+    const toastContent = document.createElement("div");
+    toastContent.className = "toast-content";
+    toastContent.innerText = message;
+
+    const toastClose = document.createElement("button");
+    toastClose.className = "toast-close";
+    toastClose.innerHTML = "×";
+    toastClose.onclick = () => {
+      toast.style.opacity = "0";
+      toast.addEventListener("transitionend", () => toast.remove(), {
+        once: true,
+      });
+    };
+
+    toast.appendChild(toastContent);
+    toast.appendChild(toastClose);
+    toast.classList.add(
+      type === "error"
+        ? "error"
+        : type === "success"
+        ? "success"
+        : type === "warning"
+        ? "warning"
+        : "info"
+    );
+    toast.classList.add(this.#toastLocation.toLowerCase().replace("_", "-"));
+    document.body.appendChild(toast);
+
+    requestAnimationFrame(() => {
+      toast.style.opacity = "1";
+    });
+
+    setTimeout(() => close.onclick(), 3500);
+  }
+
+  /**
+   * Show loading overlay
+   */
+  showLoadingOverlay(message = "Processing...") {
+    if (this.#disableUi) return;
+
+    const overlay = document.getElementById("algox-loading-overlay");
+    const minimizedBtn = document.getElementById("algox-minimized-btn");
+    const processingMessage = document.getElementById(
+      "algox-processing-message"
+    );
+
+    if (!overlay || !processingMessage) return;
+
+    processingMessage.textContent = message;
+    this.#currentLoadingMessage = message;
+
+    if (this.#sdk.theme === "dark") overlay.classList.add("dark-theme");
+    else overlay.classList.remove("dark-theme");
+
+    requestAnimationFrame(() => {
+      overlay.classList.add("visible");
+      if (minimizedBtn) minimizedBtn.classList.add("processing");
+    });
+  }
+
+  /**
+   * Hide loading overlay
+   */
+  hideLoadingOverlay() {
+    if (this.#disableUi) return;
+
+    const overlay = document.getElementById("algox-loading-overlay");
+    const minimizedBtn = document.getElementById("algox-minimized-btn");
+    if (!overlay) {
+      if (minimizedBtn) minimizedBtn.classList.remove("processing");
+      return;
+    }
+
+    requestAnimationFrame(() => {
+      overlay.classList.remove("visible");
+      if (minimizedBtn) minimizedBtn.classList.remove("processing");
+    });
+  }
+
+  /**
+   * Update loading message
+   */
+  updateLoadingMessage(message) {
+    if (this.#disableUi) {
+      return;
+    }
+
+    const processingMessage = document.getElementById(
+      "algox-processing-message"
+    );
+    if (processingMessage) {
+      processingMessage.textContent = message;
+      this.#currentLoadingMessage = message;
+    }
+  }
+
+  /**
+   * Get system theme preference
+   */
+  getSystemTheme() {
+    return window.matchMedia("(prefers-color-scheme: dark)").matches
+      ? "dark"
+      : "light";
+  }
+
+  /**
+   * Setup theme listener
+   */
+  setupThemeListener() {
+    if (this.#disableUi) {
+      return;
+    }
+
+    // Listen for system theme changes
+    window
+      .matchMedia("(prefers-color-scheme: dark)")
+      .addEventListener("change", (e) => {
+        // Only update if user hasn't manually set a theme
+        const savedState = localStorage.getItem("asx");
+        if (savedState) {
+          try {
+            const parsedState = JSON.parse(savedState);
+            if (!parsedState.theme) {
+              // If theme wasn't manually set
+              this.#sdk.theme = e.matches ? "dark" : "light";
+              this.saveUIState();
+              this.applyTheme();
+            }
+          } catch (error) {
+            console.error("Failed to parse saved state:", error);
+          }
+        }
+      });
+  }
+
+  /**
+   * Apply theme to UI elements
+   */
+  applyTheme() {
+    if (this.#disableUi) {
+      return;
+    }
+
+    const container = document.getElementById("algox-sdk-container");
+    const minimizedBtn = document.getElementById("algox-minimized-btn");
+
+    if (container) {
+      if (this.#sdk.theme === "dark") {
+        container.classList.add("dark-theme");
+        if (minimizedBtn) minimizedBtn.classList.add("dark-theme");
+      } else {
+        container.classList.remove("dark-theme");
+        if (minimizedBtn) minimizedBtn.classList.remove("dark-theme");
+      }
+    }
+  }
+
+  /**
+   * Save UI state to localStorage
+   */
+  saveUIState() {
+    if (this.#disableUi) {
+      return;
+    }
+
+    localStorage.setItem(
+      "axs",
+      JSON.stringify({
+        minimized: this.#sdk.isMinimized,
+        theme: this.#sdk.theme,
+      })
+    );
+  }
+
+  /**
+   * Minimize SDK UI
+   */
+  minimizeSDK(initialLoad) {
+    if (this.#disableUi) {
+      return;
+    }
+
+    if (!initialLoad && this.#sdk.isMinimized) return;
+
+    const container = document.getElementById("algox-sdk-container");
+    const minimizedBtn = document.getElementById("algox-minimized-btn");
+
+    if (!container || !minimizedBtn) return;
+
+    minimizedBtn.style.right =
+      this.#minimizeUILocation === "right" ? "20px" : "auto";
+    minimizedBtn.style.left =
+      this.#minimizeUILocation === "left" ? "20px" : "auto";
+
+    container.classList.add("minimizing");
+    minimizedBtn.style.display = "block";
+
+    setTimeout(() => {
+      container.style.display = "none";
+      container.classList.remove("minimizing");
+      minimizedBtn.classList.add("showing");
+    }, 300);
+
+    this.#sdk.isMinimized = true;
+    this.saveUIState();
+    eventBus.emit("window:size:minimized", {
+      minimized: this.#sdk.isMinimized,
+    });
+  }
+
+  /**
+   * Maximize SDK UI
+   */
+  maximizeSDK(initialLoad) {
+    if (this.#disableUi) {
+      return;
+    }
+
+    if (!initialLoad && !this.#sdk.isMinimized) return;
+
+    const container = document.getElementById("algox-sdk-container");
+    const minimizedBtn = document.getElementById("algox-minimized-btn");
+
+    if (!container || !minimizedBtn) return;
+
+    minimizedBtn.classList.remove("showing");
+    minimizedBtn.classList.add("hiding");
+
+    setTimeout(() => {
+      minimizedBtn.style.display = "none";
+      minimizedBtn.classList.remove("hiding");
+      container.style.display = "flex";
+      container.classList.add("maximizing");
+
+      setTimeout(() => {
+        container.classList.remove("maximizing");
+      }, 300);
+    }, 200);
+
+    this.#sdk.isMinimized = false;
+    this.saveUIState();
+    eventBus.emit("window:size:maximized", {
+      minimized: this.#sdk.isMinimized,
+    });
+  }
+
+  /**
+   * Initialize common tab system with navigation
+   */
+  #initTabSystem(callbacks) {
+    const container = document.getElementById("algox-sdk-container");
+    const tabsTrack = container?.querySelector(".algox-tabs-track");
+    const tabButtons = container?.querySelectorAll(".algox-tab-btn");
+    const prevBtn = container?.querySelector("#algox-tab-prev");
+    const nextBtn = container?.querySelector("#algox-tab-next");
+
+    if (!tabsTrack || !tabButtons || tabButtons.length === 0) return;
+
+    let currentOffset = 0;
+    const totalTabs = tabButtons.length;
+    const visibleTabs = 2;
+
+    // Hide navigation buttons if only 2 or fewer tabs
+    if (totalTabs <= visibleTabs) {
+      if (prevBtn) prevBtn.style.display = "none";
+      if (nextBtn) nextBtn.style.display = "none";
+    }
+
+    // Update navigation button states
+    const updateNavButtons = () => {
+      if (!prevBtn || !nextBtn || totalTabs <= visibleTabs) return;
+
+      prevBtn.disabled = currentOffset === 0;
+      nextBtn.disabled = currentOffset >= totalTabs - visibleTabs;
+    };
+
+    // Navigate tabs
+    const navigateTabs = (direction) => {
+      if (direction === "prev" && currentOffset > 0) {
+        currentOffset--;
+      } else if (
+        direction === "next" &&
+        currentOffset < totalTabs - visibleTabs
+      ) {
+        currentOffset++;
+      }
+
+      const offset = currentOffset * -50; // Each tab is 50% width
+      tabsTrack.style.transform = `translateX(${offset}%)`;
+      updateNavButtons();
+    };
+
+    // Tab click handlers
+    tabButtons.forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const tab = btn.getAttribute("data-tab");
+
+        // Update active tab styling
+        tabButtons.forEach((b) => b.classList.remove("active"));
+        btn.classList.add("active");
+
+        // Update tab panes
+        const tabPanes = container.querySelectorAll(".algox-tab-pane");
+        tabPanes.forEach((pane) => pane.classList.remove("active"));
+
+        const targetPane = container.querySelector(`#algox-stakex-${tab}-tab`);
+        if (targetPane) targetPane.classList.add("active");
+
+        // Call SDK-specific callbacks
+        if (tab === "stake") {
+          callbacks.onRenderAssets();
+        } else if (tab === "mystakes") {
+          callbacks.onRenderMyStaking();
+        }
+      });
+    });
+
+    // Navigation button handlers
+    prevBtn?.addEventListener("click", () => navigateTabs("prev"));
+    nextBtn?.addEventListener("click", () => navigateTabs("next"));
+
+    // Initialize navigation state
+    updateNavButtons();
+  }
+
+  // ==========================================
+  // SDK-SPECIFIC METHODS (ALGOSTAKEX)
+  // ==========================================
+  // renderWalletAssets method is defined above in the common section
 
   /**
    * Render wallet assets
@@ -521,353 +791,6 @@ export class UIManager {
       if (amountInput) amountInput.disabled = true;
     }
   }
-
-  /**
-   * Reset staking tab UI
-   */
-  resetStakingTab() {
-    // Clear selected asset with a slight delay to ensure DOM is ready
-    setTimeout(() => {
-      document.querySelectorAll(".algox-stakex-asset-item").forEach((el) => {
-        el.classList.remove("selected");
-      });
-
-      // Clear and disable amount input
-      const amountInput = document.getElementById("algox-stakex-amount-input");
-      if (amountInput) {
-        amountInput.value = "";
-        amountInput.disabled = true;
-        amountInput.placeholder = "Amount";
-      }
-
-      // Disable stake button
-      const stakeBtn = document.getElementById("algox-stakex-stake-btn");
-      if (stakeBtn) {
-        stakeBtn.disabled = true;
-      }
-    }, 100);
-  }
-
-  /**
-   * Reset My Staking tab UI
-   */
-  resetMyStakingTab() {
-    const summary = document.getElementById("algox-stakex-mystake-summary");
-    if (summary) {
-      summary.innerHTML =
-        '<div class="algox-stakex-mystake-empty">You currently don\'t have any staking</div>';
-    }
-
-    // Disable withdraw button
-    const withdrawBtn = document.getElementById("algox-stakex-withdraw-btn");
-    if (withdrawBtn) {
-      withdrawBtn.disabled = true;
-      withdrawBtn.className = "algox-stakex-withdraw-btn";
-      withdrawBtn.textContent = "Withdraw";
-    }
-  }
-
-  /**
-   * Show toast notification
-   */
-  showToast(message, type = "info") {
-    eventBus.emit("toast:show", { message, type });
-
-    if (this.#disableToast || this.#disableUi) return;
-
-    const id = "algox-toast";
-    const existing = document.getElementById(id);
-    if (existing) existing.remove();
-
-    const toast = document.createElement("div");
-    toast.id = id;
-
-    const content = document.createElement("div");
-    content.className = "toast-content";
-    content.innerText = message;
-
-    const close = document.createElement("button");
-    close.className = "toast-close";
-    close.innerHTML = "×";
-    close.onclick = () => {
-      toast.style.opacity = "0";
-      toast.addEventListener("transitionend", () => toast.remove(), {
-        once: true,
-      });
-    };
-
-    toast.appendChild(content);
-    toast.appendChild(close);
-    toast.classList.add(
-      type === "error" ? "error" : type === "success" ? "success" : "info"
-    );
-    toast.classList.add(this.#toastLocation.toLowerCase().replace("_", "-"));
-    document.body.appendChild(toast);
-
-    requestAnimationFrame(() => {
-      toast.style.opacity = "1";
-    });
-
-    setTimeout(() => close.onclick(), 3500);
-  }
-
-  /**
-   * Show loading overlay
-   */
-  showLoadingOverlay(message = "Processing...") {
-    if (this.#disableUi) return;
-
-    const overlay = document.getElementById("algox-loading-overlay");
-    const minimizedBtn = document.getElementById("algox-minimized-btn");
-    const msg = document.getElementById("algox-processing-message");
-
-    if (!overlay || !msg) return;
-
-    msg.textContent = message;
-    this.#currentLoadingMessage = message;
-
-    if (this.#sdk.theme === "dark") overlay.classList.add("dark-theme");
-    else overlay.classList.remove("dark-theme");
-
-    requestAnimationFrame(() => {
-      overlay.classList.add("visible");
-      if (minimizedBtn) minimizedBtn.classList.add("processing");
-    });
-  }
-
-  /**
-   * Hide loading overlay
-   */
-  hideLoadingOverlay() {
-    if (this.#disableUi) return;
-
-    const overlay = document.getElementById("algox-loading-overlay");
-    const minimizedBtn = document.getElementById("algox-minimized-btn");
-    if (!overlay) {
-      if (minimizedBtn) minimizedBtn.classList.remove("processing");
-      return;
-    }
-
-    requestAnimationFrame(() => {
-      overlay.classList.remove("visible");
-      if (minimizedBtn) minimizedBtn.classList.remove("processing");
-    });
-  }
-
-  /**
-   * Get system theme preference
-   */
-  getSystemTheme() {
-    return window.matchMedia("(prefers-color-scheme: dark)").matches
-      ? "dark"
-      : "light";
-  }
-
-  /**
-   * Setup theme listener
-   */
-  setupThemeListener() {
-    if (this.#disableUi) {
-      return;
-    }
-
-    // Listen for system theme changes
-    window
-      .matchMedia("(prefers-color-scheme: dark)")
-      .addEventListener("change", (e) => {
-        // Only update if user hasn't manually set a theme
-        const savedState = localStorage.getItem("asx");
-        if (savedState) {
-          try {
-            const parsedState = JSON.parse(savedState);
-            if (!parsedState.theme) {
-              // If theme wasn't manually set
-              this.#sdk.theme = e.matches ? "dark" : "light";
-              this.saveUIState(this.#sdk.isMinimized, this.#sdk.theme);
-              this.applyTheme();
-            }
-          } catch (error) {
-            console.error("Failed to parse saved state:", error);
-          }
-        }
-      });
-  }
-
-  /**
-   * Save UI state to localStorage
-   */
-  saveUIState(isMinimized, theme) {
-    if (this.#disableUi) {
-      return;
-    }
-
-    localStorage.setItem(
-      "axs",
-      JSON.stringify({
-        minimized: isMinimized,
-        theme: theme,
-      })
-    );
-  }
-
-  /**
-   * Apply theme to UI elements
-   */
-  applyTheme() {
-    if (this.#disableUi) {
-      return;
-    }
-
-    const container = document.getElementById("algox-sdk-container");
-    const minimizedBtn = document.getElementById("algox-minimized-btn");
-
-    if (container) {
-      if (this.#sdk.theme === "dark") {
-        container.classList.add("dark-theme");
-        if (minimizedBtn) minimizedBtn.classList.add("dark-theme");
-      } else {
-        container.classList.remove("dark-theme");
-        if (minimizedBtn) minimizedBtn.classList.remove("dark-theme");
-      }
-    }
-  }
-
-  /**
-   * Minimize SDK UI
-   */
-  minimizeSDK(initialLoad) {
-    if (this.#disableUi) {
-      return;
-    }
-
-    if (!initialLoad && this.#sdk.isMinimized) return;
-
-    const container = document.getElementById("algox-sdk-container");
-    const minimizedBtn = document.getElementById("algox-minimized-btn");
-
-    if (!container || !minimizedBtn) return;
-
-    minimizedBtn.style.right =
-      this.#minimizeUILocation === "right" ? "20px" : "auto";
-    minimizedBtn.style.left =
-      this.#minimizeUILocation === "left" ? "20px" : "auto";
-
-    container.classList.add("minimizing");
-    minimizedBtn.style.display = "block";
-
-    setTimeout(() => {
-      container.style.display = "none";
-      container.classList.remove("minimizing");
-      minimizedBtn.classList.add("showing");
-    }, 300);
-
-    this.#sdk.isMinimized = true;
-    this.saveUIState(this.#sdk.isMinimized, this.#sdk.theme);
-    eventBus.emit("window:size:minimized", {
-      minimized: this.#sdk.isMinimized,
-    });
-  }
-
-  /**
-   * Maximize SDK UI
-   */
-  maximizeSDK(initialLoad) {
-    if (this.#disableUi) {
-      return;
-    }
-
-    if (!initialLoad && !this.#sdk.isMinimized) return;
-
-    const container = document.getElementById("algox-sdk-container");
-    const minimizedBtn = document.getElementById("algox-minimized-btn");
-
-    if (!container || !minimizedBtn) return;
-
-    minimizedBtn.classList.remove("showing");
-    minimizedBtn.classList.add("hiding");
-
-    setTimeout(() => {
-      minimizedBtn.style.display = "none";
-      minimizedBtn.classList.remove("hiding");
-      container.style.display = "flex";
-      container.classList.add("maximizing");
-
-      setTimeout(() => {
-        container.classList.remove("maximizing");
-      }, 300);
-    }, 200);
-
-    this.#sdk.isMinimized = false;
-    this.saveUIState(this.#sdk.isMinimized, this.#sdk.theme);
-    eventBus.emit("window:size:maximized", {
-      minimized: this.#sdk.isMinimized,
-    });
-  }
-
-  /**
-   * Show temporary wallet connection UI (for headless mode)
-   */
-  async showTemporaryWalletConnectionUI(walletType, onCancel) {
-    // Create a temporary overlay for wallet connection
-    const overlay = document.createElement("div");
-    overlay.id = "algox-temp-wallet-overlay";
-
-    const container = document.createElement("div");
-    container.className = "temp-wallet-container";
-
-    const title = document.createElement("h2");
-    title.className = "temp-wallet-title";
-    title.textContent = "Connect Wallet";
-
-    const message = document.createElement("p");
-    message.className = "temp-wallet-message";
-    message.textContent = `Please open your ${walletType} wallet to complete the connection.`;
-
-    const spinner = document.createElement("div");
-    spinner.className = "temp-wallet-spinner";
-
-    const cancelBtn = document.createElement("button");
-    cancelBtn.className = "temp-wallet-cancel-btn";
-    cancelBtn.textContent = "Cancel";
-
-    cancelBtn.onclick = async () => {
-      onCancel();
-      this.hideTemporaryWalletConnectionUI();
-    };
-
-    container.appendChild(title);
-    container.appendChild(message);
-    container.appendChild(spinner);
-    container.appendChild(cancelBtn);
-    overlay.appendChild(container);
-    document.body.appendChild(overlay);
-
-    // Store reference to overlay for later removal
-    this.tempWalletOverlay = overlay;
-
-    // Add a safety timeout to auto-hide the UI after 5 minutes
-    setTimeout(() => {
-      if (this.tempWalletOverlay) {
-        this.hideTemporaryWalletConnectionUI();
-        eventBus.emit("wallet:connection:timeout", { walletType });
-      }
-    }, 5 * 60 * 1000); // 5 minutes
-  }
-
-  /**
-   * Hide temporary wallet connection UI
-   */
-  hideTemporaryWalletConnectionUI() {
-    if (this.tempWalletOverlay) {
-      this.tempWalletOverlay.remove();
-      this.tempWalletOverlay = null;
-    }
-  }
-
-  // ==========================================
-  // SDK-SPECIFIC METHODS (ALGOSTAKEX)
-  // ==========================================
-  // renderWalletAssets method is defined above in the common section
 
   /**
    * Render My Staking tab with detailed staking info
@@ -1212,6 +1135,51 @@ export class UIManager {
         }</div>`;
       const withdrawBtn = document.getElementById("algox-stakex-withdraw-btn");
       if (withdrawBtn) withdrawBtn.disabled = true;
+    }
+  }
+
+  /**
+   * Reset staking tab UI
+   */
+  resetStakingTab() {
+    // Clear selected asset with a slight delay to ensure DOM is ready
+    setTimeout(() => {
+      document.querySelectorAll(".algox-stakex-asset-item").forEach((el) => {
+        el.classList.remove("selected");
+      });
+
+      // Clear and disable amount input
+      const amountInput = document.getElementById("algox-stakex-amount-input");
+      if (amountInput) {
+        amountInput.value = "";
+        amountInput.disabled = true;
+        amountInput.placeholder = "Amount";
+      }
+
+      // Disable stake button
+      const stakeBtn = document.getElementById("algox-stakex-stake-btn");
+      if (stakeBtn) {
+        stakeBtn.disabled = true;
+      }
+    }, 100);
+  }
+
+  /**
+   * Reset My Staking tab UI
+   */
+  resetMyStakingTab() {
+    const summary = document.getElementById("algox-stakex-mystake-summary");
+    if (summary) {
+      summary.innerHTML =
+        '<div class="algox-stakex-mystake-empty">You currently don\'t have any staking</div>';
+    }
+
+    // Disable withdraw button
+    const withdrawBtn = document.getElementById("algox-stakex-withdraw-btn");
+    if (withdrawBtn) {
+      withdrawBtn.disabled = true;
+      withdrawBtn.className = "algox-stakex-withdraw-btn";
+      withdrawBtn.textContent = "Withdraw";
     }
   }
 }
