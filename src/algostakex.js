@@ -68,21 +68,34 @@ class AlgoStakeX {
     // Optional
   }) {
     try {
-      // Validate all parameters
+      // Common SDK parameters
+      // Required
       this.network = Validator.validateEnvironment(env);
-      this.#namespace = Validator.validateNamespace(namespace);
-      this.#tokenId = Validator.validateTokenId(token_id);
-      this.#disableToast = Validator.validateDisableToast(disableToast);
+      // Optional
       this.#disableUi = Validator.validateDisableUi(disableUi);
+      this.#disableToast = Validator.validateDisableToast(disableToast);
+      this.#toastLocation = Validator.validateToastLocation(toastLocation);
       this.#minimizeUILocation =
         Validator.validateMinimizeUILocation(minimizeUILocation);
       this.#logo = Validator.validateLogo(logo);
-      this.#toastLocation = Validator.validateToastLocation(toastLocation);
-      this.#stakingConfig = Validator.validateStakingConfig(staking);
 
-      // Initialize other properties
-      this.#treasuryWallet = null;
-      this.sdkEnabled = false;
+      // AlgoStakeX-specific parameters
+      // Required
+      this.#namespace = Validator.validateNamespace(namespace);
+      this.#tokenId = Validator.validateTokenId(token_id);
+      this.#stakingConfig = Validator.validateStakingConfig(staking);
+      // Optional
+
+      // Initialize other common SDK properties
+      this.#uiManager = new UIManager(this, {
+        disableUi: this.#disableUi,
+        disableToast: this.#disableToast,
+        logo: this.#logo,
+        minimizeUILocation: this.#minimizeUILocation,
+        toastLocation: this.#toastLocation,
+      });
+      this.processing = false;
+      this.events = eventBus;
       this.#supportedNetworks = ["mainnet", "testnet"];
       this.#walletConnectors = {
         pera: new PeraWalletConnect(),
@@ -94,8 +107,6 @@ class AlgoStakeX {
       this.#connectionInProgress = false;
       this.#supportedWallets = ["pera", "defly"];
       this.#selectedWalletType = null;
-
-      // Initialize algosdk client
       this.#algodClient = new algosdk.Algodv2(
         "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
         this.network === "mainnet"
@@ -103,32 +114,22 @@ class AlgoStakeX {
           : "https://testnet-api.algonode.cloud",
         443
       );
+      this.#indexerUrl =
+        this.network === "mainnet"
+          ? "https://mainnet-idx.algonode.cloud"
+          : "https://testnet-idx.algonode.cloud";
 
+      // Initialize SDK variables (SDK specific)
+      this.#treasuryWallet = null;
+      this.sdkEnabled = false;
+
+      // Initialize SDK contract details (SDK specific)
       this.#contractApplicationId =
         this.network === "mainnet" ? 749429587 : 749429587;
       this.#contractWalletAddress =
         this.network === "mainnet"
           ? "ESEUVKN4EGRLZHQJPS7AH3ITLQMFG3LABXD4VXZVJGHZEZU2JMEMJRA6NU"
           : "ESEUVKN4EGRLZHQJPS7AH3ITLQMFG3LABXD4VXZVJGHZEZU2JMEMJRA6NU";
-
-      // Initialize SDK variables
-      this.#indexerUrl =
-        this.network === "mainnet"
-          ? "https://mainnet-idx.algonode.cloud"
-          : "https://testnet-idx.algonode.cloud";
-      this.events = eventBus;
-
-      // Initialize UI state
-      this.processing = false;
-
-      // Initialize UI Manager
-      this.#uiManager = new UIManager(this, {
-        disableUi: this.#disableUi,
-        disableToast: this.#disableToast,
-        logo: this.#logo,
-        minimizeUILocation: this.#minimizeUILocation,
-        toastLocation: this.#toastLocation,
-      });
 
       // Load saved UI state (only if UI is not disabled)
       if (!this.#disableUi) {
@@ -616,6 +617,69 @@ class AlgoStakeX {
     this.#uiManager.resetToLoginUI();
   }
 
+  // ==========================================
+  // SDK-SPECIFIC PRIVATE METHODS (ALGOSTAKEX)
+  // ==========================================
+
+  /**
+   * Determine which tier applies based on staked amount
+   * Compares using token units (human-readable), not raw base units
+   * @param {number} amountRaw - The staked amount in raw base units
+   * @returns {Promise<Object>} Tier information including reward type and value
+   */
+  async #getTierForAmount(amountRaw) {
+    const config = this.#stakingConfig;
+
+    if (!config.reward.isTiered) {
+      // Simple reward system
+      return {
+        rewardType: config.reward.type,
+        rewardValue: config.reward.value,
+        tierName: null,
+        tierIndex: -1,
+        nextTier: null,
+      };
+    }
+
+    // Tiered reward system
+    const tiers = config.reward.value;
+    let selectedTier = null;
+    let selectedIndex = -1;
+
+    // Convert raw amount to token units using decimals
+    let decimals = 0;
+    try {
+      const meta = await this.getFTMetadata(this.#tokenId);
+      decimals = meta?.decimals || 0;
+    } catch {}
+    const amountTokens = amountRaw / Math.pow(10, decimals);
+
+    // Find the highest tier that the amount (in tokens) qualifies for
+    for (let i = 0; i < tiers.length; i++) {
+      if (amountTokens >= tiers[i].stake_amount) {
+        selectedTier = tiers[i];
+        selectedIndex = i;
+      } else {
+        break; // Tiers are sorted, so we can stop
+      }
+    }
+
+    if (!selectedTier) {
+      throw new Error(
+        `Staked amount does not meet minimum tier requirement of ${tiers[0].stake_amount}`
+      );
+    }
+
+    return {
+      rewardType: config.reward.type,
+      rewardValue: selectedTier.value,
+      tierName: selectedTier.name,
+      tierIndex: selectedIndex,
+      nextTier: tiers[selectedIndex + 1] || null,
+      currentTier: selectedTier,
+    };
+  }
+
   /**
    *********** SDK public methods
    */
@@ -805,69 +869,6 @@ class AlgoStakeX {
       eventBus.emit("treasury:add:failed", { error: error.message });
       throw error;
     }
-  }
-
-  /**
-   * Helper Methods
-   */
-
-  /**
-   * Determine which tier applies based on staked amount
-   * Compares using token units (human-readable), not raw base units
-   * @param {number} amountRaw - The staked amount in raw base units
-   * @returns {Promise<Object>} Tier information including reward type and value
-   */
-  async #getTierForAmount(amountRaw) {
-    const config = this.#stakingConfig;
-
-    if (!config.reward.isTiered) {
-      // Simple reward system
-      return {
-        rewardType: config.reward.type,
-        rewardValue: config.reward.value,
-        tierName: null,
-        tierIndex: -1,
-        nextTier: null,
-      };
-    }
-
-    // Tiered reward system
-    const tiers = config.reward.value;
-    let selectedTier = null;
-    let selectedIndex = -1;
-
-    // Convert raw amount to token units using decimals
-    let decimals = 0;
-    try {
-      const meta = await this.getFTMetadata(this.#tokenId);
-      decimals = meta?.decimals || 0;
-    } catch {}
-    const amountTokens = amountRaw / Math.pow(10, decimals);
-
-    // Find the highest tier that the amount (in tokens) qualifies for
-    for (let i = 0; i < tiers.length; i++) {
-      if (amountTokens >= tiers[i].stake_amount) {
-        selectedTier = tiers[i];
-        selectedIndex = i;
-      } else {
-        break; // Tiers are sorted, so we can stop
-      }
-    }
-
-    if (!selectedTier) {
-      throw new Error(
-        `Staked amount does not meet minimum tier requirement of ${tiers[0].stake_amount}`
-      );
-    }
-
-    return {
-      rewardType: config.reward.type,
-      rewardValue: selectedTier.value,
-      tierName: selectedTier.name,
-      tierIndex: selectedIndex,
-      nextTier: tiers[selectedIndex + 1] || null,
-      currentTier: selectedTier,
-    };
   }
 
   /**
