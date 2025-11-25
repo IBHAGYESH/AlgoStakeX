@@ -63,7 +63,7 @@ window.algoStakeXClient = new window.AlgoStakeX({
   env: "testnet",
   namespace: "DAOX", // Namespace for governance demo
   token_id: 749398662,
-  enable_ui: true,
+  disableUi: false,
   disableToast: false,
   toastLocation: "TOP_RIGHT",
   minimizeUILocation: "right",

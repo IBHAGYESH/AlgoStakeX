@@ -60,7 +60,7 @@ window.algoStakeXClient = new window.AlgoStakeX({
   env: "testnet", // testnet | mainnet
   namespace: "STAKX", // unique namespace
   token_id: 749347951, // ASA ID - replace with your actual token ID
-  enable_ui: true,
+  disableUi: false,
   disableToast: false,
   toastLocation: "TOP_RIGHT", // TOP_LEFT | TOP_RIGHT
   minimizeUILocation: "right", // left | right
@@ -102,7 +102,7 @@ window.algoStakeXClient = new window.AlgoStakeX({
   env: "testnet",
   namespace: "STAKX",
   token_id: 749347951,
-  enable_ui: true,
+  disableUi: false,
   disableToast: false,
   toastLocation: "TOP_RIGHT",
   minimizeUILocation: "right",
@@ -123,7 +123,7 @@ window.algoStakeXClient = new window.AlgoStakeX({
   env: "testnet",
   namespace: "STAKX",
   token_id: 749347951,
-  enable_ui: true,
+  disableUi: false,
   disableToast: false,
   toastLocation: "TOP_RIGHT",
   minimizeUILocation: "right",

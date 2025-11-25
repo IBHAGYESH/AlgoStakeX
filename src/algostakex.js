@@ -55,7 +55,7 @@ class AlgoStakeX {
     // Required
     env,
     // Optional
-    enable_ui = true,
+    disableUi = false,
     disableToast = false,
     toastLocation = "TOP_RIGHT",
     minimizeUILocation = "right",
@@ -73,7 +73,7 @@ class AlgoStakeX {
       this.#namespace = Validator.validateNamespace(namespace);
       this.#tokenId = Validator.validateTokenId(token_id);
       this.#disableToast = Validator.validateDisableToast(disableToast);
-      this.#disableUi = Validator.validateDisableUi(!enable_ui);
+      this.#disableUi = Validator.validateDisableUi(disableUi);
       this.#minimizeUILocation =
         Validator.validateMinimizeUILocation(minimizeUILocation);
       this.#logo = Validator.validateLogo(logo);

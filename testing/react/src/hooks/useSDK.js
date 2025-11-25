@@ -16,7 +16,7 @@ export function useSDK() {
           env: "testnet", // testnet | mainnet
           namespace: "GAMEX", // unique namespace for gaming platform
           token_id: 749398662, // ASA ID - replace with actual token ID
-          enable_ui: true,
+          disableUi: false,
           disableToast: false,
           toastLocation: "TOP_RIGHT", // TOP_LEFT | TOP_RIGHT
           minimizeUILocation: "right", // left | right
