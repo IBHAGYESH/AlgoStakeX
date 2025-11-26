@@ -406,3 +406,11 @@
 .algox-stakex-withdraw-btn-emergency {
   margin-top: 20px;
 }
+
+#algox-stake-tab {
+  gap: 0;
+}
+
+#algox-mystakes-tab {
+  gap: 0;
+}

@@ -97,19 +97,22 @@ export class UIManager {
         </div>
         
         <div class="algox-tab-content">
-          <div id="algox-tab" class="algox-tab-pane active">
+
+          <div id="algox-stake-tab" class="algox-tab-pane active">
             <div id="algox-stakex-asset-list" class="algox-stakex-asset-list"></div>
             <div class="algox-stakex-row">
               <input type="number" id="algox-stakex-amount-input" placeholder="Amount" disabled />
               <button id="algox-stakex-stake-btn" disabled>Stake</button>
             </div>
           </div>
+
           <div id="algox-mystakes-tab" class="algox-tab-pane">
             <div id="algox-stakex-mystake-summary"></div>
             <div class="algox-stakex-row">
               <button id="algox-stakex-withdraw-btn" disabled>Withdraw</button>
             </div>
           </div>
+          
         </div>
       </div>`;
 

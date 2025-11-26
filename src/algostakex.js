@@ -1556,12 +1556,12 @@ class AlgoStakeX {
       return {
         assetId: asset.index,
         name: asset.params.name,
-        unitName: asset.params["unit-name"],
+        unitName: asset.params.unitName,
         decimals: asset.params.decimals,
         totalSupply: asset.params.total,
         creator: asset.params.creator,
         url: asset.params.url,
-        metadataHash: asset.params["metadata-hash"],
+        metadataHash: asset.params.metadataHash,
       };
     } catch (error) {
       console.error("Error fetching FT metadata:", error.message);
