@@ -22,7 +22,7 @@ function Game() {
     () => [
       {
         name: "Explorer",
-        minStake: 10,
+        minStake: 5,
         icon: <Star />,
         color: "#8B5CF6",
         benefits: [
@@ -33,7 +33,7 @@ function Game() {
       },
       {
         name: "Adventurer",
-        minStake: 30,
+        minStake: 10,
         icon: <Rocket />,
         color: "#3B82F6",
         benefits: [
@@ -44,7 +44,7 @@ function Game() {
       },
       {
         name: "Champion",
-        minStake: 50,
+        minStake: 15,
         icon: <EmojiEvents />,
         color: "#F59E0B",
         benefits: [
@@ -56,7 +56,7 @@ function Game() {
       },
       {
         name: "Legend",
-        minStake: 60,
+        minStake: 20,
         icon: <Diamond />,
         color: "#EF4444",
         benefits: [
