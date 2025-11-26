@@ -30,23 +30,15 @@
     <header>
       <div class="container header-content">
         <div class="logo">
-          <img src="logo.png" alt="AlgoStakeX DAO Logo" />
-          <h1><i class="fas fa-scale-balanced"></i> AlgoStakeX DAO</h1>
-          <span class="powered-by">Powered by AlgoStakeX</span>
+          <h1><i class="fas fa-scale-balanced"></i>DAO Governance</h1>
+        </div>
+        <div id="connect-section" class="connect-section">
+          <button class="btn btn-primary btn-small" id="connect-wallet-btn">
+            <i class="fas fa-link"></i>
+            Connect Wallet
+          </button>
         </div>
         <div id="profile-section" class="profile-section" style="display: none">
-          <div class="wallet-info">
-            <div class="wallet-balance">
-              <span class="balance-label">Balance:</span>
-              <span id="wallet-balance">0 ALGO</span>
-            </div>
-            <div class="wallet-address-container">
-              <span id="wallet-address"></span>
-              <button id="copy-address" class="copy-btn" title="Copy Address">
-                <i class="fas fa-copy"></i>
-              </button>
-            </div>
-          </div>
           <div class="profile-avatar">
             <i class="fas fa-user-circle"></i>
           </div>
@@ -64,14 +56,8 @@
     <nav>
       <div class="container">
         <div class="nav-links">
-          <a href="#home" class="nav-link active"
+          <a href="#home" class="nav-link active" id="nav-primary"
             ><i class="fas fa-home"></i> Home</a
-          >
-          <a href="#proposals" class="nav-link"
-            ><i class="fas fa-list-check"></i> Proposals</a
-          >
-          <a href="#about" class="nav-link"
-            ><i class="fas fa-circle-info"></i> About</a
           >
         </div>
       </div>
@@ -104,38 +90,14 @@
           </div>
         </section>
 
-        <!-- Wallet Connection Section -->
-        <div id="wallet-connection-section" class="wallet-connection-section">
-          <div class="connection-card">
-            <div class="connection-icon">
-              <i class="fas fa-wallet"></i>
-            </div>
-            <h3>Connect Your Wallet</h3>
-            <p>
-              Connect your Algorand wallet to participate in governance and vote
-              on key protocol changes.
-            </p>
-            <button class="btn btn-primary btn-large" id="connect-wallet-btn">
-              <i class="fas fa-link"></i>
-              Connect Wallet
-            </button>
-            <div class="supported-wallets">
-              <span>Supported:</span>
-              <div class="wallet-icons">
-                <img
-                  src="https://via.placeholder.com/24x24?text=P"
-                  alt="Pera"
-                  title="Pera Wallet"
-                />
-                <img
-                  src="https://via.placeholder.com/24x24?text=D"
-                  alt="Defly"
-                  title="Defly Wallet"
-                />
-              </div>
-            </div>
-          </div>
-        </div>
+        <!-- Public Tiers (Not Connected) -->
+        <section class="tiers-section" id="public-tiers">
+          <h2 class="section-title">Tiers & Benefits</h2>
+          <p class="section-subtitle">
+            Stake more to unlock higher voting power.
+          </p>
+          <div class="tiers-grid" id="tiers-public-list"></div>
+        </section>
         <!-- Governance Section (Visible when connected) -->
         <div
           id="governance-section"
@@ -166,6 +128,11 @@
           </div>
 
           <div class="tiers-section">
+            <h2 class="section-title">Tiers & Benefits</h2>
+            <div class="tiers-grid" id="tiers-dashboard-list"></div>
+          </div>
+
+          <div class="tiers-section">
             <h2 class="section-title">Active Proposals</h2>
             <p class="section-subtitle">
               Cast your vote. Your tier determines your voting weight.
@@ -188,53 +155,6 @@
     </main>
 
     <footer>
-      <div class="container footer-content">
-        <div class="footer-section">
-          <div class="footer-logo">
-            <i class="fas fa-scale-balanced"></i>
-            <span>AlgoStakeX DAO</span>
-          </div>
-          <p>
-            Powered by AlgoStakeX - The premier DeFi staking platform on
-            Algorand
-          </p>
-        </div>
-        <div class="footer-section">
-          <h4>Platform</h4>
-          <ul>
-            <li><a href="#">Staking Pools</a></li>
-            <li><a href="#">Analytics</a></li>
-            <li><a href="#">Documentation</a></li>
-            <li><a href="#">API</a></li>
-          </ul>
-        </div>
-        <div class="footer-section">
-          <h4>Community</h4>
-          <ul>
-            <li>
-              <a href="#"><i class="fab fa-discord"></i> Discord</a>
-            </li>
-            <li>
-              <a href="#"><i class="fab fa-twitter"></i> Twitter</a>
-            </li>
-            <li>
-              <a href="#"><i class="fab fa-telegram"></i> Telegram</a>
-            </li>
-            <li>
-              <a href="#"><i class="fab fa-github"></i> GitHub</a>
-            </li>
-          </ul>
-        </div>
-        <div class="footer-section">
-          <h4>Security</h4>
-          <ul>
-            <li><a href="#">Audit Reports</a></li>
-            <li><a href="#">Bug Bounty</a></li>
-            <li><a href="#">Terms of Service</a></li>
-            <li><a href="#">Privacy Policy</a></li>
-          </ul>
-        </div>
-      </div>
       <div class="footer-bottom">
         <div class="container">
           <p>
@@ -242,7 +162,7 @@
             <script>
               document.write(new Date().getFullYear());
             </script>
-            AlgoStakeX DAO. All rights reserved. Built with AlgoStakeX SDK.
+            DAO Governance. All rights reserved.
           </p>
         </div>
       </div>
