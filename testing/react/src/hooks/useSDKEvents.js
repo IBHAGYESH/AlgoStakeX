@@ -13,17 +13,25 @@ export const useSDKEvents = (refreshFunctions) => {
         try {
           const treasuryAddress = import.meta.env.VITE_TREASURY_ADDRESS;
           const treasuryMnemonic = import.meta.env.VITE_TREASURY_MNEMONIC;
-          
+
           if (treasuryAddress && treasuryMnemonic) {
-            console.log('Adding treasury wallet on wallet connection...');
-            await algoStakeXClient.addTreasuryWallet(treasuryAddress, treasuryMnemonic);
-            console.log('Treasury wallet added successfully on wallet connection');
+            console.log("Adding treasury wallet on wallet connection...");
+            await algoStakeXClient.addTreasuryWallet(
+              treasuryAddress,
+              treasuryMnemonic
+            );
+            console.log(
+              "Treasury wallet added successfully on wallet connection"
+            );
           }
         } catch (error) {
-          console.error('Failed to add treasury wallet on wallet connection:', error);
+          console.error(
+            "Failed to add treasury wallet on wallet connection:",
+            error
+          );
         }
       }
-      
+
       if (refreshFunctions.onWalletConnect) {
         refreshFunctions.onWalletConnect();
       }
@@ -53,12 +61,23 @@ export const useSDKEvents = (refreshFunctions) => {
       }
     };
 
+    // If a wallet session is already active (e.g., after page refresh), ensure treasury wallet is added
+    if (!algoStakeXClient.sdkEnabled) {
+      handleWalletConnect();
+    }
+
     // Subscribe to events
     algoStakeXClient.events.on("wallet:connected", handleWalletConnect);
     algoStakeXClient.events.on("wallet:disconnected", handleWalletDisconnect);
     // Also listen to SDK UI wallet connection events
-    algoStakeXClient.events.on("wallet:connection:connected", handleWalletConnect);
-    algoStakeXClient.events.on("wallet:connection:disconnected", handleWalletDisconnect);
+    algoStakeXClient.events.on(
+      "wallet:connection:connected",
+      handleWalletConnect
+    );
+    algoStakeXClient.events.on(
+      "wallet:connection:disconnected",
+      handleWalletDisconnect
+    );
     algoStakeXClient.events.on("stake:success", handleStakeSuccess);
     algoStakeXClient.events.on("withdraw:success", handleWithdrawSuccess);
     algoStakeXClient.events.on(
@@ -69,7 +88,10 @@ export const useSDKEvents = (refreshFunctions) => {
     // Cleanup subscriptions
     return () => {
       algoStakeXClient.events.off("wallet:connected", handleWalletConnect);
-      algoStakeXClient.events.off("wallet:disconnected", handleWalletDisconnect);
+      algoStakeXClient.events.off(
+        "wallet:disconnected",
+        handleWalletDisconnect
+      );
       algoStakeXClient.events.off(
         "wallet:connection:connected",
         handleWalletConnect
