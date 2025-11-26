@@ -339,7 +339,7 @@ export class UIManager {
       toast.style.opacity = "1";
     });
 
-    setTimeout(() => close.onclick(), 3500);
+    setTimeout(() => toastClose.onclick(), 3500);
   }
 
   /**

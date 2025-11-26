@@ -449,7 +449,7 @@ class AlgoStakeX {
       const timeoutPromise = new Promise((_, reject) =>
         setTimeout(
           () => reject(new Error("Wallet connection timed out.")),
-          60 * 1000
+          30 * 1000
         )
       );
 
@@ -491,14 +491,12 @@ class AlgoStakeX {
           await walletConnector.killSession(); // Extra hard-kill if supported
         }
         if (this.#disableUi) {
-          onsole.error("UI is disabled, skipping wallet connection UI");
+          console.error("UI is disabled, skipping wallet connection UI");
         } else {
           window.location.reload();
         }
       } else {
         console.error("Failed to connect wallet!", error);
-        this.#connectionInProgress = false;
-
         // Handle specific error cases
         if (
           error.message &&
@@ -545,6 +543,7 @@ class AlgoStakeX {
               eventBus.emit("wallet:connection:connected", {
                 address: this.account,
               });
+              this.#connectionInProgress = false;
               return; // Exit successfully
             }
           } catch (reconnectError) {
@@ -559,9 +558,12 @@ class AlgoStakeX {
         eventBus.emit("wallet:connection:failed", {
           error: "Failed to connect wallet!",
         });
+        this.#connectionInProgress = false;
         if (this.#disableUi) {
           console.error("UI is disabled, skipping wallet connection UI");
         } else {
+          // Ensure the hidden container is shown back before resetting UI
+          document.getElementById("algox-sdk-container").style.display = "flex";
           this.#uiManager.resetToLoginUI();
         }
       }
