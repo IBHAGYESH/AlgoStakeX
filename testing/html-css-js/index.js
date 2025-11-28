@@ -147,15 +147,13 @@ function initializeApp() {
     // Wallet lifecycle
     ev.on("wallet:connection:connected", handleWalletConnected);
     ev.on("wallet:connection:disconnected", handleWalletDisconnected);
-    // Programmatic (mnemonic) connect/disconnect
-    ev.on("wallet:connected", handleWalletConnected);
-    ev.on("wallet:disconnected", handleWalletDisconnected);
     ev.on("wallet:connection:failed", () =>
       showToast("Wallet connection failed", "error")
     );
-    ev.on("wallet:connection:cancelled", () =>
-      showToast("Wallet connection cancelled", "info")
-    );
+    // Window minimize/restore
+    ev.on("window:size:minimized", ({ minimized }) => {
+      console.log("SDK window minimized:", minimized);
+    });
     // Processing indicators
     ev.on("sdk:processing:started", () => showLoading(true));
     ev.on("sdk:processing:stopped", () => showLoading(false));
@@ -170,7 +168,7 @@ function initializeApp() {
       loadStakingData();
     });
     // Treasury enablement
-    ev.on("treasury:added", () => {
+    ev.on("treasury:add:success", () => {
       showToast("SDK unlocked with treasury wallet", "success");
       loadStakingData();
     });

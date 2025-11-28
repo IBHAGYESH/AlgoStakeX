@@ -756,9 +756,8 @@ class AlgoStakeX {
         address: walletAddress,
       };
 
-      eventBus.emit("wallet:connected", {
+      eventBus.emit("wallet:connection:connected", {
         address: walletAddress,
-        type: "mnemonic",
       });
 
       if (!this.#disableUi) {
@@ -857,9 +856,8 @@ class AlgoStakeX {
       this.sdkEnabled = true;
 
       // Emit event
-      eventBus.emit("treasury:added", {
+      eventBus.emit("treasury:add:success", {
         address: walletAddress,
-        type: "mnemonic",
       });
 
       return {

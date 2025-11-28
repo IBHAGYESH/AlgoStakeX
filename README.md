@@ -294,7 +294,6 @@ http://localhost:4173
 | `validateStacking(poolId?: string, minimumAmount?: number)`                           | Helper validation for client logic                        |
 | `getWalletFTs()`                                                                      | List wallet FTs (balances)                                |
 | `getFTMetadata(assetId: number)`                                                      | Fetch ASA metadata (name, unit, decimals, total, creator) |
-| `optInAsset(assetId: number)`                                                         | Opt-in to an ASA (returns txid)                           |
 | `addDonation(address: string, mnemonic: string, tokenId: number, amount: number)`     | Admin: donate tokens to contract                          |
 | `withdrawExcessTokens(tokenId: number, amount: number)`                               | Admin: withdraw excess tokens from contract               |
 
@@ -311,26 +310,20 @@ window.algoStakeXClient.events.on(
 );
 ```
 
-| Event                                                    | Description                            | Payload                                                   |
-| -------------------------------------------------------- | -------------------------------------- | --------------------------------------------------------- |
-| `wallet:connection:connected`                            | Pera/Defly wallet connected            | `{ address: string }`                                     |
-| `wallet:connection:disconnected`                         | Wallet disconnected via UI             | `{ address: string }`                                     |
-| `wallet:connection:failed`                               | Wallet connection failed               | `{ error: string }`                                       |
-| `wallet:connection:cancelled`                            | User cancelled temporary wallet UI     | `{ walletType: string }`                                  |
-| `wallet:connection:timeout`                              | Temporary wallet UI timed out          | `{ walletType: string }`                                  |
-| `wallet:connected`                                       | Headless-mode connect success          | `{ address: string, type: 'mnemonic' }`                   |
-| `wallet:disconnected`                                    | Headless-mode disconnect               | `{}`                                                      |
-| `window:size:minimized`                                  | SDK UI minimized/restored              | `{ minimized: boolean }`                                  |
-| `window:size:maximized`                                  | SDK UI maximized                       | `{ minimized: boolean }`                                  |
-| `sdk:processing:started`                                 | Long-running flow started              | `{ processing: boolean }`                                 |
-| `sdk:processing:stopped`                                 | Long-running flow ended                | `{ processing: boolean }`                                 |
-| `stake:success` / `stake:failed`                         | Stake completed/failed                 | `{ transactionId?: string, error?: string }`              |
-| `withdraw:success` / `withdraw:failed`                   | Withdraw completed/failed              | `{ transactionId?: string, error?: string }`              |
-| `emergencyWithdraw:success` / `emergencyWithdraw:failed` | Emergency withdraw completed/failed    | `{ transactionId?: string, error?: string }`              |
-| `donation:success` / `donation:failed`                   | Admin donation completed/failed        | `{ transactionId?: string, error?: string }`              |
-| `withdrawExcess:success` / `withdrawExcess:failed`       | Admin withdraw-excess completed/failed | `{ transactionId?: string, error?: string }`              |
-| `treasury:added` / `treasury:add:failed`                 | Treasury added/failed                  | `{ address?: string, error?: string }`                    |
-| `toast:show`                                             | Toast displayed by UI                  | `{ message: string, type: 'info' / 'success' / 'error' }` |
+| Event                                                    | Description                            | Payload                                      |
+| -------------------------------------------------------- | -------------------------------------- | -------------------------------------------- |
+| `wallet:connection:connected`                            | Wallet connected (Pera/Defly/headless) | `{ address: string }`                        |
+| `wallet:connection:disconnected`                         | Wallet disconnected                    | `{ address: string }`                        |
+| `wallet:connection:failed`                               | Wallet connection failed               | `{ error: string }`                          |
+| `window:size:minimized`                                  | SDK UI minimized/restored              | `{ minimized: boolean }`                     |
+| `sdk:processing:started`                                 | Long-running flow started              | `{ processing: boolean }`                    |
+| `sdk:processing:stopped`                                 | Long-running flow ended                | `{ processing: boolean }`                    |
+| `stake:success` / `stake:failed`                         | Stake completed/failed                 | `{ transactionId?: string, error?: string }` |
+| `withdraw:success` / `withdraw:failed`                   | Withdraw completed/failed              | `{ transactionId?: string, error?: string }` |
+| `emergencyWithdraw:success` / `emergencyWithdraw:failed` | Emergency withdraw completed/failed    | `{ transactionId?: string, error?: string }` |
+| `donation:success` / `donation:failed`                   | Admin donation completed/failed        | `{ transactionId?: string, error?: string }` |
+| `withdrawExcess:success` / `withdrawExcess:failed`       | Admin withdraw-excess completed/failed | `{ transactionId?: string, error?: string }` |
+| `treasury:add:success` / `treasury:add:failed`           | Treasury added/failed                  | `{ address?: string, error?: string }`       |
 
 ---
 

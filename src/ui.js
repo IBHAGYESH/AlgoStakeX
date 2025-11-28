@@ -298,9 +298,6 @@ export class UIManager {
    * Show toast notification
    */
   showToast(message, type = "info") {
-    // Emit toast event regardless of disableToast setting
-    eventBus.emit("toast:show", { message, type });
-
     if (this.#disableToast || this.#disableUi) return;
 
     const toastId = "algox-toast";
@@ -552,7 +549,7 @@ export class UIManager {
 
     this.#sdk.isMinimized = false;
     this.saveUIState();
-    eventBus.emit("window:size:maximized", {
+    eventBus.emit("window:size:minimized", {
       minimized: this.#sdk.isMinimized,
     });
   }

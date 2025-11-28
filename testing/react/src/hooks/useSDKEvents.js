@@ -66,10 +66,7 @@ export const useSDKEvents = (refreshFunctions) => {
       handleWalletConnect();
     }
 
-    // Subscribe to events
-    algoStakeXClient.events.on("wallet:connected", handleWalletConnect);
-    algoStakeXClient.events.on("wallet:disconnected", handleWalletDisconnect);
-    // Also listen to SDK UI wallet connection events
+    // Subscribe to standardized wallet connection events
     algoStakeXClient.events.on(
       "wallet:connection:connected",
       handleWalletConnect
@@ -78,6 +75,11 @@ export const useSDKEvents = (refreshFunctions) => {
       "wallet:connection:disconnected",
       handleWalletDisconnect
     );
+    // Log minimize/restore events
+    const handleMinimized = ({ minimized }) => {
+      console.log("SDK window minimized:", minimized);
+    };
+    algoStakeXClient.events.on("window:size:minimized", handleMinimized);
     algoStakeXClient.events.on("stake:success", handleStakeSuccess);
     algoStakeXClient.events.on("withdraw:success", handleWithdrawSuccess);
     algoStakeXClient.events.on(
@@ -87,11 +89,6 @@ export const useSDKEvents = (refreshFunctions) => {
 
     // Cleanup subscriptions
     return () => {
-      algoStakeXClient.events.off("wallet:connected", handleWalletConnect);
-      algoStakeXClient.events.off(
-        "wallet:disconnected",
-        handleWalletDisconnect
-      );
       algoStakeXClient.events.off(
         "wallet:connection:connected",
         handleWalletConnect
@@ -100,6 +97,7 @@ export const useSDKEvents = (refreshFunctions) => {
         "wallet:connection:disconnected",
         handleWalletDisconnect
       );
+      algoStakeXClient.events.off("window:size:minimized", handleMinimized);
       algoStakeXClient.events.off("stake:success", handleStakeSuccess);
       algoStakeXClient.events.off("withdraw:success", handleWithdrawSuccess);
       algoStakeXClient.events.off(
