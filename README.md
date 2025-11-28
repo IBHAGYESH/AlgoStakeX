@@ -327,6 +327,101 @@ window.algoStakeXClient.events.on(
 
 ---
 
+## 🔁 Sequence Diagrams
+
+### Stake
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant SDK
+    participant Contract
+    participant Blockchain
+    participant Treasury as Treasury Wallet
+
+    User->>SDK: stake({ poolId, amount, ... })
+    SDK->>SDK: Validate config, pool, tier rules
+    SDK->>SDK: Validate wallet eligibility & balance
+    SDK->>User: Request wallet approval
+    User->>SDK: Approve transaction
+
+    SDK->>Contract: Prepare & send grouped transactions
+    Contract->>Blockchain: Create box storage for stake metadata
+    Contract->>Blockchain: Transfer staked tokens from User → Contract
+    Contract->>Blockchain: Store startTime, stakeAmount, tier, rewardType, APY, utilityList
+
+    Blockchain->>Contract: Confirm transactions
+    Contract->>SDK: Return transaction ID + stakeRecord
+    SDK->>SDK: Emit event: stake:success
+    SDK->>User: Staking successful (UI updates with tracking)
+```
+
+### Withdraw
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant SDK
+    participant Contract
+    participant Blockchain
+    participant Treasury as Treasury Wallet
+
+    User->>SDK: withdraw({ poolId })
+    SDK->>Contract: Fetch stake metadata
+    Contract->>SDK: Return stake metadata
+
+    SDK->>SDK: Determine if pool is FIXED or FLEXIBLE
+
+    Note over SDK: If FIXED — enforce lock period
+    SDK->>Contract: Check lock period
+    Contract->>SDK: Lock period valid or expired
+
+    Note over SDK: Calculate APY or UTILITY rewards
+    SDK->>Contract: Request reward calculation
+    Contract->>Blockchain: Compute rewards from treasury pool
+    Contract->>SDK: Return rewardAmount
+
+    Note over SDK: If FIXED and withdrawing early → penalty
+    SDK->>Contract: Calculate penalty (if applicable)
+    Contract->>SDK: Return penaltyAmount
+
+    Contract->>Treasury: Transfer rewards to User
+    Contract->>Blockchain: Transfer staked amount - penalty to User
+
+    Blockchain->>User: Receive tokens + rewards
+    Contract->>Blockchain: Delete box storage (stake closed)
+
+    SDK->>SDK: Emit event: withdraw:success
+    SDK->>User: Withdrawal successful
+```
+
+### Emergency Withdraw
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant SDK
+    participant Contract
+    participant Blockchain
+    participant Treasury as Treasury Wallet
+
+    User->>SDK: emergencyWithdraw({ poolId })
+    SDK->>Contract: Fetch stake metadata
+    Contract->>SDK: Return stake metadata
+
+    SDK->>SDK: Verify pool type = FIXED
+    SDK->>Contract: Calculate early withdrawal penalty
+    Contract->>SDK: Return penaltyAmount
+
+    Contract->>Blockchain: Transfer stakedAmount - penalty to User
+    Contract->>Treasury: Send penalty to treasury wallet
+    Contract->>Blockchain: Delete box storage
+
+    Blockchain->>User: Receive withdrawn tokens
+    SDK->>SDK: Emit event: emergency:success
+    SDK->>User: Emergency withdrawal completed
+```
+
 ## 🎯 Staking Models
 
 ### Flexible Staking with APY Rewards
